@@ -37,7 +37,7 @@ if (!defined('ROOT_PATH')) {
                     <li><a href="<?php echo url(); ?>"><i class="fas fa-chevron-right me-2"></i>Accueil</a></li>
                     <li><a href="<?php echo url('offres'); ?>"><i class="fas fa-chevron-right me-2"></i>Offres de stage</a></li>
                     <li><a href="<?php echo url('entreprises'); ?>"><i class="fas fa-chevron-right me-2"></i>Entreprises</a></li>
-                    <li><a href="/views/templates/legalmention.php"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
+                    <li><a href="projet%20web%20v2/ProjetWeb2/views/legal/legalmention.php"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
                 </ul>
             </div>
 
