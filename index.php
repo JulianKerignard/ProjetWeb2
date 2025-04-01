@@ -1,0 +1,177 @@
+<?php
+/**
+ * Point d'entrée principal de l'application
+ * Gère le routage des requêtes vers les contrôleurs appropriés
+ */
+
+// Démarrer la session
+session_start();
+
+// Charger les fichiers de configuration
+require_once 'config/config.php';
+require_once 'config/database.php';
+require_once 'includes/functions.php';
+
+// Système de routage simple
+$page = isset($_GET['page']) ? $_GET['page'] : 'accueil';
+$action = isset($_GET['action']) ? $_GET['action'] : 'index';
+
+// Router vers le contrôleur approprié
+switch ($page) {
+    case 'accueil':
+        // Page d'accueil
+        include 'views/accueil.php';
+        break;
+
+    case 'auth':
+        require_once 'controllers/AuthController.php';
+        $controller = new AuthController();
+
+        switch ($action) {
+            case 'login':
+                $controller->login();
+                break;
+            case 'logout':
+                $controller->logout();
+                break;
+            case 'register':
+                $controller->register();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    case 'entreprises':
+        require_once 'controllers/EntrepriseController.php';
+        $controller = new EntrepriseController();
+
+        switch ($action) {
+            case 'rechercher':
+                $controller->rechercher();
+                break;
+            case 'creer':
+                $controller->creer();
+                break;
+            case 'modifier':
+                $controller->modifier();
+                break;
+            case 'evaluer':
+                $controller->evaluer();
+                break;
+            case 'supprimer':
+                $controller->supprimer();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    case 'offres':
+        require_once 'controllers/OffreController.php';
+        $controller = new OffreController();
+
+        switch ($action) {
+            case 'rechercher':
+                $controller->rechercher();
+                break;
+            case 'creer':
+                $controller->creer();
+                break;
+            case 'modifier':
+                $controller->modifier();
+                break;
+            case 'supprimer':
+                $controller->supprimer();
+                break;
+            case 'statistiques':
+                $controller->statistiques();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    case 'pilotes':
+        require_once 'controllers/PiloteController.php';
+        $controller = new PiloteController();
+
+        switch ($action) {
+            case 'rechercher':
+                $controller->rechercher();
+                break;
+            case 'creer':
+                $controller->creer();
+                break;
+            case 'modifier':
+                $controller->modifier();
+                break;
+            case 'supprimer':
+                $controller->supprimer();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    case 'etudiants':
+        require_once 'controllers/EtudiantController.php';
+        $controller = new EtudiantController();
+
+        switch ($action) {
+            case 'rechercher':
+                $controller->rechercher();
+                break;
+            case 'creer':
+                $controller->creer();
+                break;
+            case 'modifier':
+                $controller->modifier();
+                break;
+            case 'supprimer':
+                $controller->supprimer();
+                break;
+            case 'statistiques':
+                $controller->statistiques();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    case 'candidatures':
+        require_once 'controllers/CandidatureController.php';
+        $controller = new CandidatureController();
+
+        switch ($action) {
+            case 'ajouter-wishlist':
+                $controller->ajouterWishlist();
+                break;
+            case 'retirer-wishlist':
+                $controller->retirerWishlist();
+                break;
+            case 'afficher-wishlist':
+                $controller->afficherWishlist();
+                break;
+            case 'postuler':
+                $controller->postuler();
+                break;
+            case 'mes-candidatures':
+                $controller->mesCandidatures();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    default:
+        // Page 404
+        include 'views/404.php';
+        break;
+}
