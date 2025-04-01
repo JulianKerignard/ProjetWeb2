@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>
-		
-	</title>
+	<title>Bonjour</title>
 </head>
 <body>
 
