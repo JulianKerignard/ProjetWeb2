@@ -38,31 +38,39 @@ class OffreController {
         // Récupération du numéro de page courant
         $page = getCurrentPage();
 
-        // Récupération des offres paginées
-        $offres = $this->offreModel->getAll($page, ITEMS_PER_PAGE, $filters);
+        // Initialiser des variables par défaut en cas d'échec de connexion
+        $totalOffres = 0;
+        $offres = [];
+        $competences = [];
+        $entreprises = [];
+        $dbError = false;
 
-        // Comptage du nombre total d'offres pour la pagination
-        $totalOffres = $this->offreModel->countAll($filters);
+        try {
+            // Récupération des offres paginées
+            $offres = $this->offreModel->getAll($page, ITEMS_PER_PAGE, $filters);
 
-        // Récupération des compétences pour le filtre
-        $competences = $this->offreModel->getAllCompetences();
+            // Comptage du nombre total d'offres pour la pagination
+            $totalOffres = $this->offreModel->countAll($filters);
 
-        // Récupération des entreprises pour le filtre
-        $entreprises = $this->entrepriseModel->getAllForFilter();
+            // Récupération des compétences pour le filtre
+            $competences = $this->offreModel->getAllCompetences();
+
+            // Récupération des entreprises pour le filtre
+            $entreprises = $this->entrepriseModel->getAllForFilter();
+        } catch (Exception $e) {
+            // En cas d'erreur de connexion ou autre erreur
+            error_log("Erreur dans OffreController::index() - " . $e->getMessage());
+            $dbError = true;
+        }
 
         // Définir le titre de la page
         $pageTitle = "Offres de stage";
 
+        // Passer l'état d'erreur à la vue
+        $dbError = ($offres === [] && $totalOffres === 0 && $competences === [] && $entreprises === []) || $dbError;
+
         // Chargement de la vue
         include VIEWS_PATH . '/offres/index.php';
-    }
-
-    /**
-     * Recherche avancée d'offres
-     */
-    public function rechercher() {
-        // Mise en commun avec index car fonctionnalité similaire
-        $this->index();
     }
 
     /**

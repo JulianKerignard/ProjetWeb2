@@ -401,6 +401,12 @@ class Entreprise {
      * @return array
      */
     public function getAllForSelect() {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Entreprise::getAllForSelect()");
+            return [];
+        }
+
         try {
             $query = "SELECT id, nom FROM {$this->table} ORDER BY nom ASC";
 
@@ -428,6 +434,12 @@ class Entreprise {
      * @return array
      */
     public function getAllForFilter() {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Entreprise::getAllForFilter()");
+            return [];
+        }
+
         return $this->getAllForSelect();
     }
 

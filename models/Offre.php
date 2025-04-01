@@ -29,9 +29,20 @@ class Offre {
      * Constructeur - Initialise la connexion à la BDD
      */
     public function __construct() {
-        require_once 'config/database.php';
+        // Vérifier si ROOT_PATH est défini
+        if (!defined('ROOT_PATH')) {
+            define('ROOT_PATH', realpath(dirname(__FILE__) . '/..'));
+        }
+
+        // Utiliser le chemin absolu pour l'inclusion
+        require_once ROOT_PATH . '/config/database.php';
         $database = new Database();
         $this->conn = $database->getConnection();
+
+        // Vérification que la connexion est établie
+        if ($this->conn === null) {
+            error_log("Erreur critique: Impossible d'établir la connexion à la base de données dans Offre.php");
+        }
     }
 
     /**
@@ -43,6 +54,12 @@ class Offre {
      * @return array
      */
     public function getAll($page = 1, $limit = ITEMS_PER_PAGE, $filters = []) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getAll()");
+            return [];
+        }
+
         try {
             // Calcul de l'offset pour la pagination
             $offset = ($page - 1) * $limit;
@@ -136,6 +153,12 @@ class Offre {
      * @return int
      */
     public function countAll($filters = []) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::countAll()");
+            return 0;
+        }
+
         try {
             // Construction de la requête de base
             $query = "SELECT COUNT(*) as total FROM {$this->table} o";
@@ -205,6 +228,12 @@ class Offre {
      * @return array|false
      */
     public function getById($id) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getById()");
+            return false;
+        }
+
         try {
             // Requête avec jointure pour récupérer les infos de l'entreprise
             $query = "SELECT o.*, e.nom as entreprise_nom, e.description as entreprise_description, 
@@ -245,6 +274,12 @@ class Offre {
      * @return array
      */
     private function getCompetencesForOffre($offreId) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getCompetencesForOffre()");
+            return [];
+        }
+
         try {
             $query = "SELECT c.id, c.nom 
                       FROM {$this->competencesTable} c
@@ -279,6 +314,12 @@ class Offre {
      * @return int
      */
     private function countCandidaturesForOffre($offreId) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::countCandidaturesForOffre()");
+            return 0;
+        }
+
         try {
             $query = "SELECT COUNT(*) as total FROM candidatures WHERE offre_id = :offre_id";
 
@@ -302,6 +343,12 @@ class Offre {
      * @return int|false ID de l'offre créée ou false en cas d'échec
      */
     public function create($data) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::create()");
+            return false;
+        }
+
         try {
             // Début de la transaction
             $this->conn->beginTransaction();
@@ -357,6 +404,12 @@ class Offre {
      * @return bool
      */
     public function update($id, $data) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::update()");
+            return false;
+        }
+
         try {
             // Début de la transaction
             $this->conn->beginTransaction();
@@ -424,6 +477,12 @@ class Offre {
      * @return bool
      */
     public function delete($id) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::delete()");
+            return false;
+        }
+
         try {
             // Début de la transaction
             $this->conn->beginTransaction();
@@ -471,6 +530,12 @@ class Offre {
      * @return array
      */
     public function getAllCompetences() {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getAllCompetences()");
+            return [];
+        }
+
         try {
             $query = "SELECT id, nom FROM {$this->competencesTable} ORDER BY nom ASC";
 
@@ -499,6 +564,17 @@ class Offre {
      * @return array
      */
     public function getStatistics() {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getStatistics()");
+            return [
+                'total_offres' => 0,
+                'repartition_competences' => [],
+                'repartition_duree' => [],
+                'top_wishlist' => []
+            ];
+        }
+
         try {
             $statistics = [];
 
