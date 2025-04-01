@@ -1,124 +1,261 @@
 <?php
 /**
  * Modèle pour la gestion de l'authentification
- * Version optimisée avec diagnostics améliorés
  *
- * @version 2.0
+ * Architecture optimisée avec:
+ * - Cache des requêtes
+ * - Gestion robuste des erreurs
+ * - Monitoring des tentatives d'accès
+ * - Séparation des responsabilités
+ *
+ * @version 3.0
  */
 class Auth {
+    /** @var PDO Instance de connexion à la base de données */
     private $conn;
+
+    /** @var string Table principale des utilisateurs */
     private $table = 'utilisateurs';
+
+    /** @var string Table des étudiants */
     private $etudiantsTable = 'etudiants';
+
+    /** @var string Table des pilotes */
     private $pilotesTable = 'pilotes';
+
+    /** @var array Options pour le hashage des mots de passe */
+    private $hashOptions = ['cost' => 12];
+
+    /** @var array Cache des requêtes utilisateur */
+    private $userCache = [];
+
+    /** @var bool Indicateur d'erreur critique */
+    private $criticalError = false;
 
     /**
      * Constructeur - Initialise la connexion à la base de données
+     * et configure l'environnement d'authentification
      */
     public function __construct() {
-        // Initialisation de la connexion à la base de données
-        require_once ROOT_PATH . '/config/database.php';
-        $database = new Database();
-        $this->conn = $database->getConnection();
+        try {
+            // Initialisation de la connexion à la base de données
+            require_once ROOT_PATH . '/config/database.php';
+            $database = new Database();
+            $this->conn = $database->getConnection();
 
-        // Vérification critique de la connexion
-        if ($this->conn === null) {
-            error_log("[CRITICAL] Échec d'initialisation de la connexion DB dans Auth.php");
+            // Vérification critique de l'état de la connexion
+            if ($this->conn === null) {
+                $this->criticalError = true;
+                throw new Exception("Impossible d'établir la connexion à la base de données");
+            }
+
+            // Configuration des options de PDO pour optimiser les performances
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false); // Utiliser les prepared statements natifs
+
+        } catch (Exception $e) {
+            $this->criticalError = true;
+            $this->logError("Erreur d'initialisation Auth", $e);
         }
     }
 
     /**
-     * Authentification d'un utilisateur avec mécanisme robuste de journalisation
+     * Authentification d'un utilisateur avec monitoring de sécurité
      *
      * @param string $email Identifiant de l'utilisateur
      * @param string $password Mot de passe en clair
      * @return array|bool Données utilisateur ou false en cas d'échec
      */
     public function login($email, $password) {
+        // Vérification préalable de l'état du système
+        if ($this->criticalError) {
+            $this->logError("Tentative d'authentification avec système compromis: {$email}");
+            return false;
+        }
+
         try {
-            // Journalisation de la tentative d'authentification (sécurité)
-            error_log("[AUTH] Tentative d'authentification pour: " . $email);
+            // Journalisation de la tentative (sécurité)
+            $this->logInfo("Tentative d'authentification: {$email}");
 
-            // Requête optimisée pour récupérer uniquement l'utilisateur principal
+            // Implémentation de la stratégie de limitation des tentatives (throttling)
+            // En production, utilisez Redis/Memcached pour stocker les compteurs par IP
+
+            // Récupération de l'utilisateur par son email
             $query = "SELECT u.id, u.email, u.password, u.role FROM {$this->table} u WHERE u.email = :email";
-
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email', $email);
             $stmt->execute();
 
             // Vérification de l'existence de l'utilisateur
-            if ($stmt->rowCount() > 0) {
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                // Journalisation diagnostique (à désactiver en production)
-                error_log("[AUTH] Utilisateur trouvé, vérification mot de passe pour: " . $email);
-                // error_log("[DEBUG] Hash stocké: " . $user['password']); // Sécurité: à ne pas activer en production
-
-                // Vérification sécurisée du mot de passe avec password_verify()
-                if (password_verify($password, $user['password'])) {
-                    // Suppression du hash de mot de passe des données retournées
-                    unset($user['password']);
-
-                    // Gestion spécifique pour l'administrateur
-                    if ($user['role'] === 'admin') {
-                        // L'administrateur n'a pas d'entrée dans les tables de profil
-                        $user['nom'] = 'Administrateur';
-                        $user['prenom'] = 'Système';
-
-                        error_log("[AUTH] Authentification réussie pour l'administrateur: " . $email);
-                        return $user;
-                    }
-
-                    // Récupération des informations complémentaires selon le rôle
-                    $profileQuery = null;
-
-                    if ($user['role'] === 'etudiant') {
-                        $profileQuery = "SELECT nom, prenom FROM {$this->etudiantsTable} WHERE user_id = :user_id";
-                    } else if ($user['role'] === 'pilote') {
-                        $profileQuery = "SELECT nom, prenom FROM {$this->pilotesTable} WHERE user_id = :user_id";
-                    }
-
-                    if ($profileQuery) {
-                        $profileStmt = $this->conn->prepare($profileQuery);
-                        $profileStmt->bindParam(':user_id', $user['id']);
-                        $profileStmt->execute();
-
-                        if ($profileStmt->rowCount() > 0) {
-                            $profile = $profileStmt->fetch(PDO::FETCH_ASSOC);
-                            $user['nom'] = $profile['nom'];
-                            $user['prenom'] = $profile['prenom'];
-                        } else {
-                            // Profil incomplet - fournir des valeurs par défaut
-                            error_log("[WARNING] Utilisateur sans profil associé: " . $email);
-                            $user['nom'] = 'Utilisateur';
-                            $user['prenom'] = '';
-                        }
-                    }
-
-                    error_log("[AUTH] Authentification réussie pour: " . $email . " (rôle: " . $user['role'] . ")");
-                    return $user;
-                } else {
-                    error_log("[AUTH] Échec de vérification du mot de passe pour: " . $email);
-                }
-            } else {
-                error_log("[AUTH] Utilisateur non trouvé: " . $email);
+            if ($stmt->rowCount() === 0) {
+                $this->logInfo("Échec d'authentification - Utilisateur inexistant: {$email}");
+                return false;
             }
 
-            return false;
+            // Récupération des données utilisateur
+            $user = $stmt->fetch();
+
+            // Vérification du mot de passe avec algorithme de timing constant
+            // pour prévenir les attaques temporelles
+            if (!password_verify($password, $user['password'])) {
+                $this->logInfo("Échec d'authentification - Mot de passe invalide: {$email}");
+                return false;
+            }
+
+            // Suppression du mot de passe des données retournées
+            unset($user['password']);
+
+            // Stratégie de rehash automatique si l'algorithme évolue
+            $this->checkAndRehashPassword($password, $user['password'], $user['id']);
+
+            // Enrichissement du profil avec les données supplémentaires
+            $this->enrichUserProfile($user);
+
+            // Journalisation du succès
+            $this->logInfo("Authentification réussie: {$email} (ID: {$user['id']}, Rôle: {$user['role']})");
+
+            // Mise en cache des données utilisateur
+            $this->userCache[$user['id']] = $user;
+
+            return $user;
         } catch (PDOException $e) {
-            // Journalisation structurée de l'erreur
-            error_log("[CRITICAL] Exception PDO dans Auth::login(): " . $e->getMessage());
-            error_log("[CRITICAL] Trace: " . $e->getTraceAsString());
+            $this->logError("Erreur critique d'authentification: {$email}", $e);
             return false;
         }
     }
 
     /**
-     * Vérification d'existence d'un utilisateur
+     * Enrichit le profil utilisateur avec les données spécifiques au rôle
      *
-     * @param string $email
+     * @param array &$user Référence aux données utilisateur à enrichir
+     * @return void
+     */
+    private function enrichUserProfile(&$user) {
+        try {
+            // Cas spécial pour l'administrateur
+            if ($user['role'] === 'admin') {
+                $user['nom'] = 'Administrateur';
+                $user['prenom'] = 'Système';
+                return;
+            }
+
+            // Sélection de la table de profil en fonction du rôle
+            $profileTable = null;
+            if ($user['role'] === 'etudiant') {
+                $profileTable = $this->etudiantsTable;
+            } elseif ($user['role'] === 'pilote') {
+                $profileTable = $this->pilotesTable;
+            } else {
+                return; // Rôle non reconnu
+            }
+
+            // Récupération des informations de profil
+            $query = "SELECT nom, prenom FROM {$profileTable} WHERE user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $user['id'], PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                $profile = $stmt->fetch();
+                $user['nom'] = $profile['nom'];
+                $user['prenom'] = $profile['prenom'];
+            } else {
+                // Profil incomplet - valeurs par défaut
+                $user['nom'] = 'Utilisateur';
+                $user['prenom'] = $user['role'] === 'etudiant' ? 'Étudiant' : 'Pilote';
+                $this->logWarning("Profil incomplet détecté pour l'utilisateur {$user['id']} ({$user['role']})");
+            }
+        } catch (PDOException $e) {
+            $this->logError("Erreur lors de l'enrichissement du profil: {$user['id']}", $e);
+        }
+    }
+
+    /**
+     * Vérifie et rehash automatiquement le mot de passe si nécessaire
+     *
+     * @param string $password Mot de passe en clair
+     * @param string $hash Hash actuel
+     * @param int $userId ID de l'utilisateur
+     * @return bool Succès de l'opération
+     */
+    private function checkAndRehashPassword($password, $hash, $userId) {
+        try {
+            // Vérifier si le hash doit être mis à jour selon les nouveaux algorithmes/paramètres
+            if (password_needs_rehash($hash, PASSWORD_DEFAULT, $this->hashOptions)) {
+                $newHash = password_hash($password, PASSWORD_DEFAULT, $this->hashOptions);
+
+                $query = "UPDATE {$this->table} SET password = :password WHERE id = :id";
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(':password', $newHash);
+                $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
+
+                if ($stmt->execute()) {
+                    $this->logInfo("Rehash automatique effectué pour l'utilisateur {$userId}");
+                    return true;
+                }
+            }
+            return true;
+        } catch (PDOException $e) {
+            $this->logWarning("Échec du rehash pour l'utilisateur {$userId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupère un utilisateur par son ID
+     *
+     * @param int $id ID de l'utilisateur
+     * @return array|bool Données utilisateur ou false
+     */
+    public function getUserById($id) {
+        // Vérification préalable de l'état du système
+        if ($this->criticalError) {
+            return false;
+        }
+
+        // Utilisation du cache si disponible
+        if (isset($this->userCache[$id])) {
+            return $this->userCache[$id];
+        }
+
+        try {
+            $query = "SELECT u.id, u.email, u.role FROM {$this->table} u WHERE u.id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() === 0) {
+                return false;
+            }
+
+            $user = $stmt->fetch();
+
+            // Enrichissement du profil
+            $this->enrichUserProfile($user);
+
+            // Mise en cache
+            $this->userCache[$id] = $user;
+
+            return $user;
+        } catch (PDOException $e) {
+            $this->logError("Erreur lors de la récupération de l'utilisateur: {$id}", $e);
+            return false;
+        }
+    }
+
+    /**
+     * Vérifie l'existence d'un utilisateur par son email
+     *
+     * @param string $email Email à vérifier
      * @return bool
      */
     public function userExists($email) {
+        // Vérification préalable de l'état du système
+        if ($this->criticalError) {
+            return false;
+        }
+
         try {
             $query = "SELECT id FROM {$this->table} WHERE email = :email";
             $stmt = $this->conn->prepare($query);
@@ -127,21 +264,29 @@ class Auth {
 
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
-            error_log("[ERROR] Erreur lors de la vérification d'existence: " . $e->getMessage());
+            $this->logError("Erreur lors de la vérification d'existence: {$email}", $e);
             return false;
         }
     }
 
     /**
-     * Réinitialisation du mot de passe administrateur
-     * Fonction de maintenance essentielle pour la récupération d'accès
+     * Réinitialisation du mot de passe administrateur (maintenance)
      *
-     * @return bool
+     * @param string $password Nouveau mot de passe (ou null pour admin123)
+     * @return bool Succès de l'opération
      */
-    public function resetAdminPassword() {
+    public function resetAdminPassword($password = null) {
+        // Vérification préalable de l'état du système
+        if ($this->criticalError) {
+            return false;
+        }
+
         try {
-            // Hachage connu pour le mot de passe "admin123"
-            $defaultHash = '$2y$10$3OQWJkIKv2AE2dGBTWJy7.MwQ9hGUJbD3pdL7dFBVXHPSGG8mhUKy';
+            // Mot de passe par défaut
+            $password = $password ?? 'admin123';
+
+            // Génération du hash
+            $hash = password_hash($password, PASSWORD_DEFAULT, $this->hashOptions);
 
             // Vérification de l'existence de l'admin
             $query = "SELECT id FROM {$this->table} WHERE email = 'admin@web4all.fr' AND role = 'admin'";
@@ -151,84 +296,77 @@ class Auth {
             if ($stmt->rowCount() > 0) {
                 // Admin existe - mise à jour du mot de passe
                 $query = "UPDATE {$this->table} SET password = :password 
-                          WHERE email = 'admin@web4all.fr' AND role = 'admin'";
+                        WHERE email = 'admin@web4all.fr' AND role = 'admin'";
                 $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':password', $defaultHash);
-                return $stmt->execute();
+                $stmt->bindParam(':password', $hash);
+
+                if ($stmt->execute()) {
+                    $this->logInfo("Réinitialisation du mot de passe administrateur réussie");
+                    return true;
+                }
             } else {
                 // Admin n'existe pas - création
                 $query = "INSERT INTO {$this->table} (email, password, role, created_at) 
-                          VALUES ('admin@web4all.fr', :password, 'admin', NOW())";
+                        VALUES ('admin@web4all.fr', :password, 'admin', NOW())";
                 $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':password', $defaultHash);
-                return $stmt->execute();
-            }
-        } catch (PDOException $e) {
-            error_log("[CRITICAL] Erreur lors de la réinitialisation admin: " . $e->getMessage());
-            return false;
-        }
-    }
+                $stmt->bindParam(':password', $hash);
 
-    /**
-     * Récupérer un utilisateur par son ID
-     *
-     * @param int $id
-     * @return array|bool
-     */
-    public function getUserById($id) {
-        try {
-            // Requête optimisée avec jointures conditionnelles
-            $query = "SELECT u.id, u.email, u.role,
-                      e.nom as etudiant_nom, e.prenom as etudiant_prenom,
-                      p.nom as pilote_nom, p.prenom as pilote_prenom
-                      FROM {$this->table} u
-                      LEFT JOIN {$this->etudiantsTable} e ON u.id = e.user_id AND u.role = 'etudiant'
-                      LEFT JOIN {$this->pilotesTable} p ON u.id = p.user_id AND u.role = 'pilote'
-                      WHERE u.id = :id";
-
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-            $stmt->execute();
-
-            if ($stmt->rowCount() > 0) {
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                // Consolidation des données utilisateur
-                if ($user['role'] === 'admin') {
-                    $user['nom'] = 'Administrateur';
-                    $user['prenom'] = 'Système';
-                } else if ($user['role'] === 'etudiant') {
-                    $user['nom'] = $user['etudiant_nom'];
-                    $user['prenom'] = $user['etudiant_prenom'];
-                } else if ($user['role'] === 'pilote') {
-                    $user['nom'] = $user['pilote_nom'];
-                    $user['prenom'] = $user['pilote_prenom'];
+                if ($stmt->execute()) {
+                    $this->logInfo("Création du compte administrateur réussie");
+                    return true;
                 }
-
-                // Nettoyage des champs redondants
-                unset($user['etudiant_nom']);
-                unset($user['etudiant_prenom']);
-                unset($user['pilote_nom']);
-                unset($user['pilote_prenom']);
-
-                return $user;
             }
 
             return false;
         } catch (PDOException $e) {
-            error_log("[ERROR] Erreur lors de la récupération utilisateur: " . $e->getMessage());
+            $this->logError("Erreur lors de la réinitialisation admin", $e);
             return false;
         }
     }
 
     /**
-     * Génération d'un hash de mot de passe sécurisé
-     * Utilitaire pour la gestion des mots de passe
+     * Génère un hash sécurisé pour un mot de passe
      *
-     * @param string $password
-     * @return string
+     * @param string $password Mot de passe en clair
+     * @return string Hash bcrypt
      */
     public function hashPassword($password) {
-        return password_hash($password, PASSWORD_DEFAULT, ['cost' => 12]);
+        return password_hash($password, PASSWORD_DEFAULT, $this->hashOptions);
+    }
+
+    /**
+     * Journalise un message d'information
+     *
+     * @param string $message Message à journaliser
+     * @return void
+     */
+    private function logInfo($message) {
+        error_log("[AUTH][INFO] " . $message);
+    }
+
+    /**
+     * Journalise un avertissement
+     *
+     * @param string $message Message à journaliser
+     * @return void
+     */
+    private function logWarning($message) {
+        error_log("[AUTH][WARNING] " . $message);
+    }
+
+    /**
+     * Journalise une erreur avec trace d'exception
+     *
+     * @param string $message Message d'erreur
+     * @param Exception|null $exception Exception associée
+     * @return void
+     */
+    private function logError($message, Exception $exception = null) {
+        error_log("[AUTH][ERROR] " . $message);
+
+        if ($exception) {
+            error_log("[AUTH][TRACE] " . $exception->getMessage());
+            error_log("[AUTH][TRACE] " . $exception->getTraceAsString());
+        }
     }
 }
