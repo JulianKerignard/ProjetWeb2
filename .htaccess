@@ -1,22 +1,27 @@
 # Activation du module de réécriture d'URL
 RewriteEngine On
 
-# Base du chemin - Modifiez cette ligne pour qu'elle corresponde à votre installation
+# Base du chemin - CORRECTION IMPORTANTE - Assurez-vous que cette valeur est correcte
 RewriteBase /ProjetWeb2/
 
-# Ne pas appliquer les règles aux fichiers et dossiers existants
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# Vérification du module rewrite (important pour le débogage)
+<IfModule mod_rewrite.c>
+    # Activer le mode de débogage du RewriteEngine pour l'environnement de développement
+    # RewriteLogLevel 3
+    # RewriteLog "${APACHE_LOG_DIR}/rewrite.log"
 
-# Rediriger toutes les requêtes vers index.php
-RewriteRule ^(.*)$ index.php [QSA,L]
+    # Ne pas appliquer les règles aux fichiers et dossiers existants
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
 
-# IMPORTANT: Permettre l'accès aux fichiers statiques
-# Désactivation temporaire de la protection des dossiers pour le développement
-# RewriteRule ^(public)($|/) - [L]
+    # Rediriger toutes les requêtes vers index.php (QSA: maintient la query string)
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
 
-# Empêcher l'accès aux dossiers sensibles SAUF public
-# RewriteRule ^(?!public/)(config|controllers|models|views|includes)/ - [F,L]
+# Si mod_rewrite n'est pas disponible, afficher un message d'erreur
+<IfModule !mod_rewrite.c>
+    ErrorDocument 500 "Le module mod_rewrite d'Apache n'est pas activé. Veuillez l'activer pour que l'application fonctionne correctement."
+</IfModule>
 
 # Protection contre les injections XSS
 <IfModule mod_headers.c>
@@ -25,14 +30,3 @@ RewriteRule ^(.*)$ index.php [QSA,L]
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
-
-# Compression GZIP
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-javascript application/json
-</IfModule>
-
-# Protection du fichier .htaccess
-<Files .htaccess>
-    Order Allow,Deny
-    Deny from all
-</Files>

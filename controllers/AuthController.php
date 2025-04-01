@@ -64,7 +64,7 @@ class AuthController {
         }
 
         // Affichage du formulaire de connexion
-        include 'views/auth/login.php';
+        include ROOT_PATH . '/views/auth/login.php';
     }
 
     /**
@@ -77,5 +77,13 @@ class AuthController {
 
         // Redirection vers la page de connexion
         redirect(url('auth', 'login'));
+    }
+
+    /**
+     * Inscription (si nécessaire)
+     */
+    public function register() {
+        // À implémenter si nécessaire
+        echo "Fonctionnalité d'inscription à implémenter";
     }
 }

@@ -1,54 +1,59 @@
 <?php
 /**
- * Fonctions utilitaires pour l'application
+ * Fonctions utilitaires pour l'application avec support multi-environnement
  */
 
 /**
- * Redirection vers une URL
+ * Gestionnaire de redirection optimisé
  * @param string $url
+ * @param int $statusCode
  */
-function redirect($url) {
-    header("Location: {$url}");
+function redirect($url, $statusCode = 302) {
+    header("Location: {$url}", true, $statusCode);
     exit;
 }
 
 /**
- * Générer une URL complète
+ * Générateur d'URL compatible multi-environnement
  * @param string $page
  * @param string $action
  * @param array $params
  * @return string
  */
 function url($page = 'accueil', $action = '', $params = []) {
-    $url = URL_ROOT . '/index.php?page=' . $page;
+    // Construction de l'URL de base
+    $baseUrl = rtrim(URL_ROOT, '/');
+    $url = $baseUrl . '/index.php';
+
+    // Construction des paramètres de requête
+    $queryParams = ['page' => $page];
 
     if (!empty($action)) {
-        $url .= '&action=' . $action;
+        $queryParams['action'] = $action;
     }
 
     if (!empty($params)) {
-        foreach ($params as $key => $value) {
-            $url .= '&' . $key . '=' . $value;
-        }
+        $queryParams = array_merge($queryParams, $params);
     }
 
-    return $url;
+    // Génération de la chaîne de requête URL-encoded
+    return $url . '?' . http_build_query($queryParams);
 }
 
 /**
- * Nettoyer une chaîne de caractères
+ * Nettoie et sécurise les données d'entrée
  * @param string $data
  * @return string
  */
 function cleanData($data) {
     $data = trim($data);
     $data = stripslashes($data);
-    $data = htmlspecialchars($data);
+    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
     return $data;
 }
 
 /**
- * Vérifier si l'utilisateur est connecté
+ * Vérifie si l'utilisateur est connecté
  * @return bool
  */
 function isLoggedIn() {
@@ -56,7 +61,7 @@ function isLoggedIn() {
 }
 
 /**
- * Vérifier si l'utilisateur a un rôle spécifique
+ * Vérifie si l'utilisateur a un rôle spécifique
  * @param string $role
  * @return bool
  */
@@ -65,7 +70,7 @@ function hasRole($role) {
 }
 
 /**
- * Vérifier si l'utilisateur est admin
+ * Vérifie si l'utilisateur est admin
  * @return bool
  */
 function isAdmin() {
@@ -73,7 +78,7 @@ function isAdmin() {
 }
 
 /**
- * Vérifier si l'utilisateur est pilote
+ * Vérifie si l'utilisateur est pilote
  * @return bool
  */
 function isPilote() {
@@ -81,12 +86,12 @@ function isPilote() {
 }
 
 /**
- * Vérifier l'accès à une fonctionnalité selon le rôle
+ * Vérifie l'accès à une fonctionnalité selon la matrice de rôles
  * @param string $feature
  * @return bool
  */
 function checkAccess($feature) {
-    // Liste des fonctionnalités par rôle
+    // Matrice d'accès basée sur les rôles
     $accessMatrix = [
         ROLE_ADMIN => [
             'entreprise_creer', 'entreprise_modifier', 'entreprise_supprimer',
@@ -111,7 +116,7 @@ function checkAccess($feature) {
     }
 
     if (isAdmin()) {
-        return true; // Admin a accès à tout
+        return true; // Admin a accès à toutes les fonctionnalités
     }
 
     $userRole = $_SESSION['role'];
@@ -124,20 +129,24 @@ function checkAccess($feature) {
 }
 
 /**
- * Afficher un message d'alerte
+ * Génère un composant d'alerte Bootstrap
  * @param string $message
  * @param string $type (success, danger, warning, info)
+ * @param bool $dismissible
  * @return string
  */
-function alert($message, $type = 'info') {
-    return '<div class="alert alert-' . $type . ' alert-dismissible fade show" role="alert">
+function alert($message, $type = 'info', $dismissible = true) {
+    $dismissibleClass = $dismissible ? 'alert-dismissible fade show' : '';
+    $dismissButton = $dismissible ? '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' : '';
+
+    return '<div class="alert alert-' . $type . ' ' . $dismissibleClass . '" role="alert">
                 ' . $message . '
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                ' . $dismissButton . '
             </div>';
 }
 
 /**
- * Générer la pagination
+ * Composant de pagination avec optimisation UX
  * @param int $totalItems
  * @param int $currentPage
  * @param string $page
@@ -169,14 +178,34 @@ function pagination($totalItems, $currentPage, $page, $action, $params = []) {
                 </li>';
     }
 
-    // Pages
-    for ($i = 1; $i <= $totalPages; $i++) {
+    // Algorithme optimisé pour pagination avec beaucoup de pages
+    $startPage = max(1, min($currentPage - 2, $totalPages - 4));
+    $endPage = min($totalPages, max($currentPage + 2, 5));
+
+    // Première page + ellipsis si nécessaire
+    if ($startPage > 1) {
+        $html .= '<li class="page-item"><a class="page-link" href="' . url($page, $action, array_merge($params, ['p' => 1])) . '">1</a></li>';
+        if ($startPage > 2) {
+            $html .= '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+
+    // Pages numérotées
+    for ($i = $startPage; $i <= $endPage; $i++) {
         if ($i == $currentPage) {
             $html .= '<li class="page-item active"><span class="page-link">' . $i . '</span></li>';
         } else {
             $pageParams = array_merge($params, ['p' => $i]);
             $html .= '<li class="page-item"><a class="page-link" href="' . url($page, $action, $pageParams) . '">' . $i . '</a></li>';
         }
+    }
+
+    // Dernière page + ellipsis si nécessaire
+    if ($endPage < $totalPages) {
+        if ($endPage < $totalPages - 1) {
+            $html .= '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+        $html .= '<li class="page-item"><a class="page-link" href="' . url($page, $action, array_merge($params, ['p' => $totalPages])) . '">' . $totalPages . '</a></li>';
     }
 
     // Bouton suivant
@@ -197,4 +226,50 @@ function pagination($totalItems, $currentPage, $page, $action, $params = []) {
             </nav>';
 
     return $html;
+}
+
+/**
+ * Inclusion intelligente des fichiers de vue
+ * @param string $path
+ * @param array $data
+ * @return void
+ */
+function viewInclude($path, $data = []) {
+    // Extraction des variables pour les rendre disponibles dans la vue
+    if (!empty($data)) {
+        extract($data);
+    }
+
+    $fullPath = ROOT_PATH . '/' . $path;
+
+    if (!file_exists($fullPath)) {
+        throw new Exception("Vue non trouvée: {$path}");
+    }
+
+    include $fullPath;
+}
+
+/**
+ * Logger pour le débogage en environnement de développement
+ * @param mixed $data
+ * @param string $level
+ * @return void
+ */
+function devLog($data, $level = 'info') {
+    if (ENVIRONMENT !== 'development') {
+        return;
+    }
+
+    $timestamp = date('Y-m-d H:i:s');
+    $serialized = is_string($data) ? $data : print_r($data, true);
+    error_log("[{$timestamp}] [{$level}] {$serialized}");
+}
+
+/**
+ * Récupère la valeur actuelle de pagination depuis la query string
+ * @param int $default
+ * @return int
+ */
+function getCurrentPage($default = 1) {
+    return isset($_GET['p']) && is_numeric($_GET['p']) ? max(1, (int)$_GET['p']) : $default;
 }

@@ -1,7 +1,22 @@
 <?php
+// Vérifier si on accède directement au fichier (pour débogage uniquement)
+if (!defined('ROOT_PATH')) {
+    // Démarrer la session si elle n'est pas déjà démarrée
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Définir les chemins manuellement pour un accès direct
+    define('ROOT_PATH', dirname(dirname(__DIR__))); // Remonte de deux niveaux depuis /views/auth
+
+    // Charger les fichiers nécessaires
+    require_once ROOT_PATH . '/config/config.php';
+    require_once ROOT_PATH . '/includes/functions.php';
+}
+
 // Titre de la page
 $pageTitle = "Connexion";
-include 'views/templates/header.php';
+include ROOT_PATH . '/views/templates/header.php';
 ?>
 
     <div class="container mt-5">
@@ -107,4 +122,4 @@ include 'views/templates/header.php';
         });
     </script>
 
-<?php include 'views/templates/footer.php'; ?>
+<?php include ROOT_PATH . '/views/templates/footer.php'; ?>

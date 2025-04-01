@@ -1,3 +1,19 @@
+<?php
+// Vérifier si on accède directement au fichier
+if (!defined('ROOT_PATH')) {
+    // Définir les chemins manuellement pour un accès direct
+    define('ROOT_PATH', dirname(dirname(__DIR__))); // Remonte de deux niveaux depuis /views/templates
+
+    // Charger les fichiers nécessaires
+    require_once ROOT_PATH . '/config/config.php';
+    require_once ROOT_PATH . '/includes/functions.php';
+
+    // Démarrer la session si elle n'est pas déjà démarrée
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -39,12 +55,12 @@
 
                 <?php if (isLoggedIn()): ?>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo ($_GET['page'] === 'offres') ? 'active' : ''; ?>" href="<?php echo url('offres'); ?>">
+                        <a class="nav-link <?php echo isset($_GET['page']) && $_GET['page'] === 'offres' ? 'active' : ''; ?>" href="<?php echo url('offres'); ?>">
                             <i class="fas fa-clipboard-list me-1"></i> Offres de stage
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo ($_GET['page'] === 'entreprises') ? 'active' : ''; ?>" href="<?php echo url('entreprises'); ?>">
+                        <a class="nav-link <?php echo isset($_GET['page']) && $_GET['page'] === 'entreprises' ? 'active' : ''; ?>" href="<?php echo url('entreprises'); ?>">
                             <i class="fas fa-building me-1"></i> Entreprises
                         </a>
                     </li>

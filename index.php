@@ -1,177 +1,128 @@
 <?php
 /**
- * Point d'entrée principal de l'application
- * Gère le routage des requêtes vers les contrôleurs appropriés
+ * Point d'entrée principal avec dispatcher MVC optimisé
+ * Compatible avec environnement de développement PhpStorm
  */
 
-// Démarrer la session
+// Activation du reporting d'erreurs en mode développement
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Initialisation de la session
 session_start();
 
-// Charger les fichiers de configuration
-require_once 'config/config.php';
-require_once 'config/database.php';
-require_once 'includes/functions.php';
+// Initialisation du mécanisme de routage
+try {
+    // Chargement de la configuration d'environnement
+    require_once __DIR__ . '/config/config.php';
+    require_once __DIR__ . '/config/database.php';
+    require_once __DIR__ . '/includes/functions.php';
 
-// Système de routage simple
-$page = isset($_GET['page']) ? $_GET['page'] : 'accueil';
-$action = isset($_GET['action']) ? $_GET['action'] : 'index';
+    // Récupération des paramètres de routage
+    $page = isset($_GET['page']) ? filter_var($_GET['page'], FILTER_SANITIZE_SPECIAL_CHARS) : 'accueil';
+    $action = isset($_GET['action']) ? filter_var($_GET['action'], FILTER_SANITIZE_SPECIAL_CHARS) : 'index';
 
-// Router vers le contrôleur approprié
-switch ($page) {
-    case 'accueil':
-        // Page d'accueil
-        include 'views/accueil.php';
-        break;
+    // Journalisation de la requête en mode développement
+    if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+        devLog("Request: page={$page}, action={$action}", 'request');
+        devLog("Server: " . json_encode($_SERVER), 'server');
+    }
 
-    case 'auth':
-        require_once 'controllers/AuthController.php';
-        $controller = new AuthController();
+    // Définition de la structure de routage MVC
+    $routes = [
+        'accueil' => [
+            'controller' => null, // Page statique
+            'view' => 'views/accueil.php'
+        ],
+        'auth' => [
+            'controller' => 'AuthController',
+            'actions' => ['login', 'logout', 'register', 'index']
+        ],
+        'entreprises' => [
+            'controller' => 'EntrepriseController',
+            'actions' => ['index', 'rechercher', 'creer', 'modifier', 'evaluer', 'supprimer']
+        ],
+        'offres' => [
+            'controller' => 'OffreController',
+            'actions' => ['index', 'rechercher', 'creer', 'modifier', 'supprimer', 'statistiques']
+        ],
+        'pilotes' => [
+            'controller' => 'PiloteController',
+            'actions' => ['index', 'rechercher', 'creer', 'modifier', 'supprimer']
+        ],
+        'etudiants' => [
+            'controller' => 'EtudiantController',
+            'actions' => ['index', 'rechercher', 'creer', 'modifier', 'supprimer', 'statistiques']
+        ],
+        'candidatures' => [
+            'controller' => 'CandidatureController',
+            'actions' => ['index', 'ajouter-wishlist', 'retirer-wishlist', 'afficher-wishlist', 'postuler', 'mes-candidatures']
+        ]
+    ];
 
-        switch ($action) {
-            case 'login':
-                $controller->login();
-                break;
-            case 'logout':
-                $controller->logout();
-                break;
-            case 'register':
-                $controller->register();
-                break;
-            default:
-                $controller->index();
-                break;
+    // Traitement de la requête selon le routage MVC
+    if (!isset($routes[$page])) {
+        // Route non trouvée -> page 404
+        header("HTTP/1.0 404 Not Found");
+        viewInclude('views/404.php', ['pageTitle' => 'Page non trouvée']);
+    }
+    elseif ($routes[$page]['controller'] === null) {
+        // Page statique sans contrôleur
+        viewInclude($routes[$page]['view'], ['pageTitle' => ucfirst($page)]);
+    }
+    else {
+        // Résolution de contrôleur dynamique
+        $controllerName = $routes[$page]['controller'];
+        $controllerFile = __DIR__ . "/controllers/{$controllerName}.php";
+
+        // Vérification de l'existence du contrôleur
+        if (!file_exists($controllerFile)) {
+            throw new Exception("Contrôleur non trouvé: {$controllerName}.php");
         }
-        break;
 
-    case 'entreprises':
-        require_once 'controllers/EntrepriseController.php';
-        $controller = new EntrepriseController();
+        // Chargement et instanciation du contrôleur
+        require_once $controllerFile;
+        $controller = new $controllerName();
 
-        switch ($action) {
-            case 'rechercher':
-                $controller->rechercher();
-                break;
-            case 'creer':
-                $controller->creer();
-                break;
-            case 'modifier':
-                $controller->modifier();
-                break;
-            case 'evaluer':
-                $controller->evaluer();
-                break;
-            case 'supprimer':
-                $controller->supprimer();
-                break;
-            default:
-                $controller->index();
-                break;
+        // Vérification et exécution de l'action
+        if (!in_array($action, $routes[$page]['actions'])) {
+            $action = 'index'; // Action par défaut si invalide
         }
-        break;
 
-    case 'offres':
-        require_once 'controllers/OffreController.php';
-        $controller = new OffreController();
-
-        switch ($action) {
-            case 'rechercher':
-                $controller->rechercher();
-                break;
-            case 'creer':
-                $controller->creer();
-                break;
-            case 'modifier':
-                $controller->modifier();
-                break;
-            case 'supprimer':
-                $controller->supprimer();
-                break;
-            case 'statistiques':
-                $controller->statistiques();
-                break;
-            default:
-                $controller->index();
-                break;
+        // Exécution de l'action du contrôleur
+        if (!method_exists($controller, $action)) {
+            throw new Exception("Action non supportée: {$action} dans {$controllerName}");
         }
-        break;
 
-    case 'pilotes':
-        require_once 'controllers/PiloteController.php';
-        $controller = new PiloteController();
+        $controller->$action();
+    }
+}
+catch (PDOException $e) {
+    // Gestion des erreurs de base de données
+    devLog("Erreur de base de données: " . $e->getMessage(), 'error');
 
-        switch ($action) {
-            case 'rechercher':
-                $controller->rechercher();
-                break;
-            case 'creer':
-                $controller->creer();
-                break;
-            case 'modifier':
-                $controller->modifier();
-                break;
-            case 'supprimer':
-                $controller->supprimer();
-                break;
-            default:
-                $controller->index();
-                break;
-        }
-        break;
+    if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+        echo "<div style='background-color: #FFEBEE; color: #C62828; padding: 20px; margin: 20px; border-radius: 5px;'>";
+        echo "<h2>Erreur de base de données</h2>";
+        echo "<p><strong>Message:</strong> " . $e->getMessage() . "</p>";
+        echo "<p><strong>Fichier:</strong> " . $e->getFile() . " (ligne " . $e->getLine() . ")</p>";
+        echo "</div>";
+    } else {
+        viewInclude('views/500.php', ['pageTitle' => 'Erreur serveur', 'errorMessage' => 'Un problème est survenu avec la base de données.']);
+    }
+}
+catch (Exception $e) {
+    // Gestion des autres exceptions
+    devLog("Exception: " . $e->getMessage(), 'error');
 
-    case 'etudiants':
-        require_once 'controllers/EtudiantController.php';
-        $controller = new EtudiantController();
-
-        switch ($action) {
-            case 'rechercher':
-                $controller->rechercher();
-                break;
-            case 'creer':
-                $controller->creer();
-                break;
-            case 'modifier':
-                $controller->modifier();
-                break;
-            case 'supprimer':
-                $controller->supprimer();
-                break;
-            case 'statistiques':
-                $controller->statistiques();
-                break;
-            default:
-                $controller->index();
-                break;
-        }
-        break;
-
-    case 'candidatures':
-        require_once 'controllers/CandidatureController.php';
-        $controller = new CandidatureController();
-
-        switch ($action) {
-            case 'ajouter-wishlist':
-                $controller->ajouterWishlist();
-                break;
-            case 'retirer-wishlist':
-                $controller->retirerWishlist();
-                break;
-            case 'afficher-wishlist':
-                $controller->afficherWishlist();
-                break;
-            case 'postuler':
-                $controller->postuler();
-                break;
-            case 'mes-candidatures':
-                $controller->mesCandidatures();
-                break;
-            default:
-                $controller->index();
-                break;
-        }
-        break;
-
-    default:
-        // Page 404
-        include 'views/404.php';
-        break;
+    if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+        echo "<div style='background-color: #FFF8E1; color: #F57F17; padding: 20px; margin: 20px; border-radius: 5px;'>";
+        echo "<h2>Exception non gérée</h2>";
+        echo "<p><strong>Message:</strong> " . $e->getMessage() . "</p>";
+        echo "<p><strong>Fichier:</strong> " . $e->getFile() . " (ligne " . $e->getLine() . ")</p>";
+        echo "<pre>" . $e->getTraceAsString() . "</pre>";
+        echo "</div>";
+    } else {
+        viewInclude('views/500.php', ['pageTitle' => 'Erreur serveur', 'errorMessage' => 'Une erreur inattendue est survenue.']);
+    }
 }
