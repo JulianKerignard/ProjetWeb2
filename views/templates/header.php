@@ -1,18 +1,11 @@
 <?php
-// Vérifier si on accède directement au fichier
+// Protection contre l'accès direct et initialisation des dépendances
 if (!defined('ROOT_PATH')) {
-    // Définir les chemins manuellement pour un accès direct
-    define('ROOT_PATH', dirname(dirname(__DIR__))); // Remonte de deux niveaux depuis /views/templates
-
-    // Charger les fichiers nécessaires
-    require_once ROOT_PATH . '/config/config.php';
-    require_once ROOT_PATH . '/includes/functions.php';
-
-    // Démarrer la session si elle n'est pas déjà démarrée
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    require_once realpath(dirname(__FILE__) . '/../../bootstrap.php');
 }
+
+// Detection du mode PhpStorm pour éviter les problèmes de chemins relatifs
+$isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -53,14 +46,49 @@ if (!defined('ROOT_PATH')) {
                     </a>
                 </li>
 
+                <!-- Menu Offres de stage - Toujours visible -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle <?php echo (isset($_GET['page']) && $_GET['page'] === 'offres') ? 'active' : ''; ?>"
+                       href="#" id="offresDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-clipboard-list me-1"></i> Offres de stage
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="offresDropdown">
+                        <li>
+                            <a class="dropdown-item" href="<?php echo url('offres'); ?>">
+                                <i class="fas fa-list me-2"></i> Toutes les offres
+                            </a>
+                        </li>
+                        <?php if (isLoggedIn()): ?>
+                            <?php if (checkAccess('offre_creer')): ?>
+                                <li>
+                                    <a class="dropdown-item" href="<?php echo url('offres', 'creer'); ?>">
+                                        <i class="fas fa-plus-circle me-2"></i> Créer une offre
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+
+                            <?php if (isAdmin() || isPilote()): ?>
+                                <li>
+                                    <a class="dropdown-item" href="<?php echo url('offres', 'statistiques'); ?>">
+                                        <i class="fas fa-chart-pie me-2"></i> Statistiques
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+
+                            <li><hr class="dropdown-divider"></li>
+
+                            <li>
+                                <a class="dropdown-item" href="<?php echo url('offres', 'rechercher'); ?>">
+                                    <i class="fas fa-search me-2"></i> Recherche avancée
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+
                 <?php if (isLoggedIn()): ?>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo isset($_GET['page']) && $_GET['page'] === 'offres' ? 'active' : ''; ?>" href="<?php echo url('offres'); ?>">
-                            <i class="fas fa-clipboard-list me-1"></i> Offres de stage
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo isset($_GET['page']) && $_GET['page'] === 'entreprises' ? 'active' : ''; ?>" href="<?php echo url('entreprises'); ?>">
+                        <a class="nav-link <?php echo (isset($_GET['page']) && $_GET['page'] === 'entreprises') ? 'active' : ''; ?>" href="<?php echo url('entreprises'); ?>">
                             <i class="fas fa-building me-1"></i> Entreprises
                         </a>
                     </li>

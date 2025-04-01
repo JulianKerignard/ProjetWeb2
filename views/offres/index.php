@@ -1,5 +1,21 @@
 <?php
-// Vue pour l'affichage de la liste des offres
+// Protection contre l'accès direct et initialisation des dépendances
+if (!defined('ROOT_PATH')) {
+    require_once realpath(dirname(__FILE__) . '/../../bootstrap.php');
+}
+
+// Titre de la page
+$pageTitle = "Offres de stage";
+
+// Protection contre l'exécution directe sans données du contrôleur
+if (!isset($offres)) {
+    require_once ROOT_PATH . '/controllers/OffreController.php';
+    $controller = new OffreController();
+    // Simulation de l'exécution du contrôleur
+    $controller->index();
+    exit; // Le contrôleur se chargera d'inclure cette vue à nouveau
+}
+
 include ROOT_PATH . '/views/templates/header.php';
 ?>
 
