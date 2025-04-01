@@ -20,7 +20,7 @@ function redirect($url) {
  * @return string
  */
 function url($page = 'accueil', $action = '', $params = []) {
-    $url = URL_ROOT . '/?page=' . $page;
+    $url = URL_ROOT . '/index.php?page=' . $page;
 
     if (!empty($action)) {
         $url .= '&action=' . $action;

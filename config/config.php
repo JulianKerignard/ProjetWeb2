@@ -5,7 +5,14 @@
 
 // Définir les chemins de base
 define('ROOT_PATH', dirname(__DIR__));
-define('URL_ROOT', 'http://localhost/projet-stage');
+
+// Modifier cette ligne pour qu'elle corresponde à votre environnement local
+// Option 1: Chemin absolu si vous n'utilisez pas de VirtualHost
+define('URL_ROOT', 'http://localhost/ProjetWeb2');
+
+// Option 2: Si vous avez configuré un VirtualHost, utilisez:
+// define('URL_ROOT', 'http://projet-stage.local');
+
 define('SITE_NAME', 'Stages Web4All');
 
 // Rôles utilisateurs
