@@ -120,11 +120,18 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
                 <?php if (isLoggedIn()): ?>
                     <?php if (isAdmin() || isPilote()): ?>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle <?php echo (isset($_GET['page']) && ($_GET['page'] === 'admin' || $_GET['page'] === 'pilotes' || $_GET['page'] === 'etudiants')) ? 'active' : ''; ?>" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-user-shield me-1"></i> Administration
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                                 <?php if (isAdmin()): ?>
+                                    <li><a class="dropdown-item" href="<?php echo url('admin'); ?>">
+                                            <i class="fas fa-tachometer-alt me-2"></i> Tableau de bord
+                                        </a></li>
+                                    <li><a class="dropdown-item" href="<?php echo url('admin', 'stats'); ?>">
+                                            <i class="fas fa-chart-line me-2"></i> Statistiques détaillées
+                                        </a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="<?php echo url('pilotes'); ?>">
                                             <i class="fas fa-user-tie me-2"></i> Pilotes
                                         </a></li>

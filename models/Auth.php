@@ -43,6 +43,13 @@ class Auth {
                 if (password_verify($password, $user['password'])) {
                     // Suppression du mot de passe avant de retourner l'utilisateur
                     unset($user['password']);
+
+                    // Gestion du cas spécial pour l'administrateur sans entrée dans les tables associées
+                    if ($user['role'] === 'admin' && empty($user['nom']) && empty($user['prenom'])) {
+                        $user['nom'] = 'Administrateur';
+                        $user['prenom'] = 'Système';
+                    }
+
                     return $user;
                 }
             }
@@ -118,7 +125,15 @@ class Auth {
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
-                return $stmt->fetch(PDO::FETCH_ASSOC);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                // Gestion du cas spécial pour l'administrateur sans entrée dans les tables associées
+                if ($user['role'] === 'admin' && empty($user['nom']) && empty($user['prenom'])) {
+                    $user['nom'] = 'Administrateur';
+                    $user['prenom'] = 'Système';
+                }
+
+                return $user;
             }
 
             return false;

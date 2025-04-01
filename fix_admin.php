@@ -67,9 +67,6 @@ switch ($page) {
             case 'supprimer':
                 $controller->supprimer();
                 break;
-            case 'detail':
-                $controller->detail();
-                break;
             default:
                 $controller->index();
                 break;
@@ -89,9 +86,6 @@ switch ($page) {
                 break;
             case 'modifier':
                 $controller->modifier();
-                break;
-            case 'detail':
-                $controller->detail();
                 break;
             case 'supprimer':
                 $controller->supprimer();
@@ -119,9 +113,6 @@ switch ($page) {
             case 'logs':
                 $controller->logs();
                 break;
-            case 'maintenance':
-                $controller->maintenance();
-                break;
             default:
                 $controller->index();
                 break;
@@ -145,9 +136,6 @@ switch ($page) {
             case 'supprimer':
                 $controller->supprimer();
                 break;
-            case 'detail':
-                $controller->detail();
-                break;
             default:
                 $controller->index();
                 break;
@@ -170,9 +158,6 @@ switch ($page) {
                 break;
             case 'supprimer':
                 $controller->supprimer();
-                break;
-            case 'detail':
-                $controller->detail();
                 break;
             case 'statistiques':
                 $controller->statistiques();
