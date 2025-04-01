@@ -1,5 +1,20 @@
 <?php
+if (!defined('ROOT_PATH')) {
+    // Définir les chemins manuellement pour un accès direct
+    define('ROOT_PATH', dirname(__DIR__)); // Remonte d'un niveau depuis /views
 
+    // Charger les fichiers nécessaires
+    require_once ROOT_PATH . '/config/config.php';
+    require_once ROOT_PATH . '/includes/functions.php';
+
+    // Démarrer la session si elle n'est pas déjà démarrée
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+}
+
+// Titre de la page
+$pageTitle = "Accueil";
 include ROOT_PATH . '/views/templates/header.php';
 
 ?>

@@ -37,7 +37,7 @@ if (!defined('ROOT_PATH')) {
                     <li><a href="<?php echo url(); ?>"><i class="fas fa-chevron-right me-2"></i>Accueil</a></li>
                     <li><a href="<?php echo url('offres'); ?>"><i class="fas fa-chevron-right me-2"></i>Offres de stage</a></li>
                     <li><a href="<?php echo url('entreprises'); ?>"><i class="fas fa-chevron-right me-2"></i>Entreprises</a></li>
-                    <li><a href="projet%20web%20v2/ProjetWeb2/views/legal/legalmention.php"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
+                    <li><a href="ProjetWeb2/views/legal/legalmention.php"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
                 </ul>
             </div>
 
@@ -46,7 +46,7 @@ if (!defined('ROOT_PATH')) {
                 <address>
                     <p><i class="fas fa-map-marker-alt me-3"></i> 1 Avenue des Stages, 75000 Paris</p>
                     <p><i class="fas fa-envelope me-3"></i> contact@web4all.fr</p>
-                    <p><i class="fas fa-phone me-3"></i> +33 1 23 45 67 89</p>
+                    <p><i class="fas fa-phone me-3"></i> +33 7 66 85 63 90</p>
                     <p><i class="fas fa-clock me-3"></i> Lun-Ven: 9h00-18h00</p>
                 </address>
             </div>
