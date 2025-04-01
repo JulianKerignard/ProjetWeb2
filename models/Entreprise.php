@@ -8,14 +8,41 @@ class Entreprise {
     private $table = 'entreprises';
     private $evaluationsTable = 'evaluations_entreprises';
     private $offresTable = 'offres';
+    private $dbError = false;
 
     /**
      * Constructeur - Initialise la connexion à la BDD
      */
     public function __construct() {
-        require_once 'config/database.php';
-        $database = new Database();
-        $this->conn = $database->getConnection();
+        // Vérifier si ROOT_PATH est défini
+        if (!defined('ROOT_PATH')) {
+            define('ROOT_PATH', realpath(dirname(__FILE__) . '/..'));
+        }
+
+        // Utiliser le chemin absolu pour l'inclusion
+        require_once ROOT_PATH . '/config/database.php';
+
+        try {
+            $database = new Database();
+            $this->conn = $database->getConnection();
+
+            // Vérification critique de la connexion
+            if ($this->conn === null) {
+                $this->dbError = true;
+                error_log("Mode dégradé activé: Impossible d'établir la connexion à la base de données dans Entreprise.php");
+            }
+        } catch (Exception $e) {
+            $this->dbError = true;
+            error_log("Exception dans Entreprise::__construct(): " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Indique si une erreur de BDD est survenue
+     * @return bool
+     */
+    public function hasError() {
+        return $this->dbError;
     }
 
     /**
@@ -27,6 +54,11 @@ class Entreprise {
      * @return array
      */
     public function getAll($page = 1, $limit = ITEMS_PER_PAGE, $filters = []) {
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
+            return [];
+        }
+
         try {
             // Calcul de l'offset pour la pagination
             $offset = ($page - 1) * $limit;
@@ -107,6 +139,11 @@ class Entreprise {
      * @return int
      */
     public function countAll($filters = []) {
+        // Mode dégradé - retourne 0
+        if ($this->dbError) {
+            return 0;
+        }
+
         try {
             // Préparation de la requête SQL de base
             $query = "SELECT COUNT(*) as total FROM {$this->table} e";
@@ -155,6 +192,11 @@ class Entreprise {
      * @return array|false Données de l'entreprise ou false si non trouvée
      */
     public function getById($id) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
         try {
             $query = "SELECT e.*,
                      (SELECT COUNT(*) FROM {$this->offresTable} o WHERE o.entreprise_id = e.id) as nb_offres,
@@ -205,6 +247,11 @@ class Entreprise {
      * @return int|false ID de l'entreprise créée ou false en cas d'échec
      */
     public function create($data) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
         try {
             $query = "INSERT INTO {$this->table} (nom, description, email, telephone, created_at)
                       VALUES (:nom, :description, :email, :telephone, NOW())";
@@ -234,6 +281,11 @@ class Entreprise {
      * @return bool
      */
     public function update($id, $data) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
         try {
             $query = "UPDATE {$this->table} SET
                       nom = :nom,
@@ -264,6 +316,11 @@ class Entreprise {
      * @return bool
      */
     public function delete($id) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
         try {
             // Vérification des offres liées
             $query = "SELECT COUNT(*) as count FROM {$this->offresTable} WHERE entreprise_id = :id";
@@ -302,6 +359,11 @@ class Entreprise {
      * @return array
      */
     public function getEvaluations($entrepriseId) {
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
+            return [];
+        }
+
         try {
             $query = "SELECT ev.*, e.nom, e.prenom
                       FROM {$this->evaluationsTable} ev
@@ -340,6 +402,11 @@ class Entreprise {
      * @return bool
      */
     public function addEvaluation($data) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
         try {
             $query = "INSERT INTO {$this->evaluationsTable} (entreprise_id, etudiant_id, note, commentaire, created_at)
                       VALUES (:entreprise_id, :etudiant_id, :note, :commentaire, NOW())";
@@ -364,6 +431,11 @@ class Entreprise {
      * @return array
      */
     public function getOffresActives($entrepriseId) {
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
+            return [];
+        }
+
         try {
             $query = "SELECT o.id, o.titre, o.remuneration, o.date_debut, o.date_fin,
                       (SELECT COUNT(*) FROM candidatures c WHERE c.offre_id = o.id) as nb_candidatures
@@ -401,9 +473,8 @@ class Entreprise {
      * @return array
      */
     public function getAllForSelect() {
-        // Vérification préalable de la connexion
-        if ($this->conn === null) {
-            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Entreprise::getAllForSelect()");
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
             return [];
         }
 
@@ -434,9 +505,8 @@ class Entreprise {
      * @return array
      */
     public function getAllForFilter() {
-        // Vérification préalable de la connexion
-        if ($this->conn === null) {
-            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Entreprise::getAllForFilter()");
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
             return [];
         }
 
@@ -449,6 +519,11 @@ class Entreprise {
      * @return int
      */
     public function countWithOffres() {
+        // Mode dégradé - retourne 0
+        if ($this->dbError) {
+            return 0;
+        }
+
         try {
             $query = "SELECT COUNT(DISTINCT e.id) as total 
                       FROM {$this->table} e 
