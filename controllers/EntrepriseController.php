@@ -55,6 +55,33 @@ class EntrepriseController {
     }
 
     /**
+     * Affiche les détails d'une entreprise
+     */
+    public function detail() {
+        // Récupération de l'ID de l'entreprise
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+        if ($id <= 0) {
+            // Redirection vers la liste si ID invalide
+            redirect(url('entreprises'));
+        }
+
+        // Récupération des détails de l'entreprise
+        $entreprise = $this->entrepriseModel->getById($id);
+
+        if (!$entreprise) {
+            // Redirection vers la liste si entreprise non trouvée
+            redirect(url('entreprises'));
+        }
+
+        // Définir le titre de la page
+        $pageTitle = "Détail de l'entreprise: " . $entreprise['nom'];
+
+        // Chargement de la vue
+        include VIEWS_PATH . '/entreprises/detail.php';
+    }
+
+    /**
      * Formulaire et traitement de création d'entreprise
      */
     public function creer() {
