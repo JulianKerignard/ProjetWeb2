@@ -6,7 +6,7 @@
  * et de gestion de la liste de souhaits avec validation des droits
  * d'accès et gestion robuste des erreurs.
  *
- * @version 1.0
+ * @version 1.1
  */
 class CandidatureController {
     private $candidatureModel;
@@ -17,13 +17,17 @@ class CandidatureController {
      * Constructeur - Initialise les modèles nécessaires
      */
     public function __construct() {
-        // Vérification d'authentification
+        // Vérification d'authentification avec stockage de la route demandée
         if (!isLoggedIn()) {
+            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
             redirect(url('auth', 'login'));
         }
 
-        // Vérification du rôle étudiant
-        if ($_SESSION['role'] !== ROLE_ETUDIANT) {
+        // Vérification de rôle souple pour les actions spécifiques
+        $restrictedActions = ['mes-candidatures', 'afficher-wishlist'];
+        $currentAction = isset($_GET['action']) ? $_GET['action'] : '';
+
+        if (in_array($currentAction, $restrictedActions) && $_SESSION['role'] !== ROLE_ETUDIANT) {
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Vous n'avez pas les droits nécessaires pour accéder à cette page."
@@ -91,13 +95,17 @@ class CandidatureController {
             redirect(url('offres'));
         }
 
-        // Vérification si l'étudiant a déjà postulé
-        if ($this->candidatureModel->hasCandidature($_SESSION['user_id'], $offre_id)) {
-            $_SESSION['flash_message'] = [
-                'type' => 'warning',
-                'message' => "Vous avez déjà postulé à cette offre."
-            ];
-            redirect(url('offres', 'detail', ['id' => $offre_id]));
+        // Vérification conditionnelle de candidature existante
+        $hasCandidature = false;
+        if (isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT) {
+            $hasCandidature = $this->candidatureModel->hasCandidature($_SESSION['user_id'], $offre_id);
+            if ($hasCandidature) {
+                $_SESSION['flash_message'] = [
+                    'type' => 'warning',
+                    'message' => "Vous avez déjà postulé à cette offre."
+                ];
+                redirect(url('offres', 'detail', ['id' => $offre_id]));
+            }
         }
 
         $errors = [];
@@ -105,7 +113,7 @@ class CandidatureController {
         $lettre_motivation = "";
 
         // Traitement du formulaire
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['role'] === ROLE_ETUDIANT) {
             // Récupération et nettoyage des données
             $lettre_motivation = isset($_POST['lettre_motivation']) ? cleanData($_POST['lettre_motivation']) : '';
 

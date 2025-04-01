@@ -4,6 +4,24 @@
  * Gère le routage des requêtes vers les contrôleurs appropriés
  */
 
+
+// Ajoutez ce code au tout début de index.php (avant le require de bootstrap.php)
+// Debug pour les problèmes de session
+session_start();
+error_log("========= DÉBUT DE LA REQUÊTE =========");
+error_log("Session actuelle: " . print_r($_SESSION, true));
+error_log("URL: " . $_SERVER['REQUEST_URI']);
+
+// Si on est en mode développement, créer un utilisateur de test si nécessaire
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
+    error_log("Création automatique d'un utilisateur test pour le développement");
+    // Définir des valeurs par défaut pour le développement
+    $_SESSION['user_id'] = 1;
+    $_SESSION['role'] = 'etudiant'; // Assurez-vous que cette valeur correspond à ROLE_ETUDIANT
+    $_SESSION['prenom'] = 'Test';
+    $_SESSION['nom'] = 'Utilisateur';
+}
+
 // Démarrer la session
 session_start();
 
