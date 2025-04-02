@@ -6,8 +6,8 @@
 class Database {
     private $host = 'localhost';
     private $db_name = 'stages_db';
-    private $username = 'root';
-    private $password = '';
+    private $username = 'julian';
+    private $password = 'hM+8jfB8;9';
     private $conn = null;
 
     /**
