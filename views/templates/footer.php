@@ -73,7 +73,7 @@ if (!defined('ROOT_PATH')) {
 </footer>
 
 <!-- Back to top button -->
-<button type="button" class="btn btn-primary btn-floating btn-lg" id="btn-back-to-top" style="position: fixed; bottom: 20px; right: 20px; display: none; border-radius: 50%; width: 50px; height: 50px;">
+<button type="button" class="btn btn-primary btn-floating btn-lg" id="btn-back-to-top" style="position: fixed; bottom: 20px; right: 20px; display: none; border-radius: 45%; width: 50px; height: 50px;">
     <i class="fas fa-arrow-up"></i>
 </button>
 
