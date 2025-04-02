@@ -1,0 +1,58 @@
+2025-04-02 09:02:10 [INFO] === DÉBUT DU TEST D'UPLOAD ===
+2025-04-02 09:02:10 [INFO] Tentative d'écriture de fichier test: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/test_1743577330.txt
+2025-04-02 09:02:10 [INFO] Résultat d'écriture: Succès
+2025-04-02 09:02:10 [INFO] Vérification du contenu: Ceci est un fichier de test
+
+2025-04-02 09:02:10 [INFO] Fichier test supprimé
+2025-04-02 09:02:10 [INFO] Test d'insertion en base de données
+2025-04-02 09:02:10 [INFO] Connexion à la base de données réussie
+2025-04-02 09:02:10 [ERROR] Exception lors du test d'insertion: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`stages_db`.`candidatures`, CONSTRAINT `candidatures_ibfk_2` FOREIGN KEY (`etudiant_id`) REFERENCES `etudiants` (`id`) ON DELETE CASCADE)
+2025-04-02 09:02:10 [INFO] === FIN DU TEST D'UPLOAD ===
+2025-04-02 09:02:36 [INFO] Tentative de création de candidature - offre_id: 1, etudiant_id: 8
+2025-04-02 09:02:36 [INFO] Fichier CV reçu - name: Dossier_Synthese_Julian_KERIGNARD_CPI A2 informatique 24-25 Nancy_Semestre_3 (3).PDF, size: 31536, type: application/pdf
+2025-04-02 09:02:36 [INFO] Vérification de l'extension: pdf
+2025-04-02 09:02:36 [INFO] Tentative d'upload vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_8_1743577356_4344.pdf
+2025-04-02 09:02:36 [INFO] Test d'écriture réussi
+2025-04-02 09:02:36 [SUCCESS] Fichier uploadé avec succès vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_8_1743577356_4344.pdf
+2025-04-02 09:02:36 [INFO] Fichier CV uploadé avec succès: cv_8_1743577356_4344.pdf
+2025-04-02 09:02:36 [INFO] Tentative d'insertion en base de données
+2025-04-02 09:02:36 [ERROR] Exception PDO lors de l'insertion: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`stages_db`.`candidatures`, CONSTRAINT `candidatures_ibfk_2` FOREIGN KEY (`etudiant_id`) REFERENCES `etudiants` (`id`) ON DELETE CASCADE)
+2025-04-02 09:04:00 [INFO] Tentative de création de candidature - offre_id: 1, etudiant_id: 8
+2025-04-02 09:04:00 [INFO] Fichier CV reçu - name: Julian.docx, size: 43298, type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+2025-04-02 09:04:00 [INFO] Vérification de l'extension: docx
+2025-04-02 09:04:00 [INFO] Tentative d'upload vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_8_1743577440_3473.docx
+2025-04-02 09:04:00 [INFO] Test d'écriture réussi
+2025-04-02 09:04:00 [SUCCESS] Fichier uploadé avec succès vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_8_1743577440_3473.docx
+2025-04-02 09:04:00 [INFO] Fichier CV uploadé avec succès: cv_8_1743577440_3473.docx
+2025-04-02 09:04:00 [INFO] Tentative d'insertion en base de données
+2025-04-02 09:04:00 [ERROR] Exception PDO lors de l'insertion: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`stages_db`.`candidatures`, CONSTRAINT `candidatures_ibfk_2` FOREIGN KEY (`etudiant_id`) REFERENCES `etudiants` (`id`) ON DELETE CASCADE)
+2025-04-02 09:11:40 [INFO] Tentative de création de candidature - offre_id: 1, etudiant_id: 8
+2025-04-02 09:11:40 [ERROR] L'étudiant avec l'ID 8 n'existe pas
+2025-04-02 09:26:20 [INFO] Tentative de création de candidature - offre_id: 1, etudiant_id: 4
+2025-04-02 09:26:20 [INFO] Fichier CV reçu - name: doc07381520250320183806.pdf, size: 1272812, type: application/pdf
+2025-04-02 09:26:20 [INFO] Vérification de l'extension: pdf
+2025-04-02 09:26:20 [INFO] Tentative d'upload vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_4_1743578780_8427.pdf
+2025-04-02 09:26:20 [INFO] Test d'écriture réussi
+2025-04-02 09:26:20 [SUCCESS] Fichier uploadé avec succès vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_4_1743578780_8427.pdf
+2025-04-02 09:26:20 [SUCCESS] Fichier CV uploadé avec succès: cv_4_1743578780_8427.pdf
+2025-04-02 09:26:20 [INFO] Début de la transaction
+2025-04-02 09:26:20 [INFO] Exécution de la requête d'insertion: INSERT INTO candidatures 
+                      (offre_id, etudiant_id, cv, lettre_motivation, date_candidature)
+                      VALUES (:offre_id, :etudiant_id, :cv, :lettre_motivation, NOW())
+2025-04-02 09:26:20 [INFO] Paramètres: offre_id=1, etudiant_id=4, cv=cv_4_1743578780_8427.pdf
+2025-04-02 09:26:20 [SUCCESS] Candidature créée avec succès, ID: 12
+2025-04-02 09:26:20 [SUCCESS] Transaction validée
+2025-04-02 09:27:15 [INFO] Tentative de création de candidature - offre_id: 5, etudiant_id: 4
+2025-04-02 09:27:15 [INFO] Fichier CV reçu - name: Villerupt - contrat de bail - Julian Kerignard.docx, size: 40386, type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+2025-04-02 09:27:15 [INFO] Vérification de l'extension: docx
+2025-04-02 09:27:15 [INFO] Tentative d'upload vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_4_1743578835_7771.docx
+2025-04-02 09:27:15 [INFO] Test d'écriture réussi
+2025-04-02 09:27:15 [SUCCESS] Fichier uploadé avec succès vers: C:\Users\jujuk\PhpstormProjects\ProjetWeb2/public/uploads/cv_4_1743578835_7771.docx
+2025-04-02 09:27:15 [SUCCESS] Fichier CV uploadé avec succès: cv_4_1743578835_7771.docx
+2025-04-02 09:27:15 [INFO] Début de la transaction
+2025-04-02 09:27:15 [INFO] Exécution de la requête d'insertion: INSERT INTO candidatures 
+                      (offre_id, etudiant_id, cv, lettre_motivation, date_candidature)
+                      VALUES (:offre_id, :etudiant_id, :cv, :lettre_motivation, NOW())
+2025-04-02 09:27:15 [INFO] Paramètres: offre_id=5, etudiant_id=4, cv=cv_4_1743578835_7771.docx
+2025-04-02 09:27:15 [SUCCESS] Candidature créée avec succès, ID: 13
+2025-04-02 09:27:15 [SUCCESS] Transaction validée

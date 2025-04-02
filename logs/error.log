@@ -1,0 +1,6 @@
+[01-Apr-2025 11:23:32 Europe/Paris] 2025-04-01 11:23:32 - Erreur: [2] require_once(C:\Users\jujuk\PhpstormProjects\ProjetWeb2/helpers/url_helper.php): Failed to open stream: No such file or directory dans C:\Users\jujuk\PhpstormProjects\ProjetWeb2\bootstrap.php à la ligne 46
+
+[01-Apr-2025 11:23:32 Europe/Paris] PHP Warning:  require_once(C:\Users\jujuk\PhpstormProjects\ProjetWeb2/helpers/url_helper.php): Failed to open stream: No such file or directory in C:\Users\jujuk\PhpstormProjects\ProjetWeb2\bootstrap.php on line 46
+[01-Apr-2025 11:23:32 Europe/Paris] 2025-04-01 11:23:32 - Exception non capturée: Failed opening required 'C:\Users\jujuk\PhpstormProjects\ProjetWeb2/helpers/url_helper.php' (include_path='C:\xampp\php\PEAR') dans C:\Users\jujuk\PhpstormProjects\ProjetWeb2\bootstrap.php à la ligne 46
+#0 C:\Users\jujuk\PhpstormProjects\ProjetWeb2\index.php(13): require_once()
+#1 {main}
