@@ -32,7 +32,7 @@ switch (ENVIRONMENT) {
 // Informations générales de l'application
 define('SITE_NAME', 'LeBonPlan');
 define('SITE_VERSION', '1.0.0');
-define('SITE_AUTHOR', 'Web4All');
+define('SITE_AUTHOR', 'Groupe 3 - CESI Nancy');
 
 // Configuration des chemins absolus
 define('ROOT_PATH', dirname(__DIR__)); // Chemin racine de l'application
