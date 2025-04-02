@@ -30,6 +30,13 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
 
     <!-- Styles personnalisés supplémentaires -->
     <link href="<?php echo URL_ROOT; ?>/public/css/custom.css" rel="stylesheet">
+
+    <!-- Style supplémentaire pour le bouton de connexion -->
+    <style>
+        .btn-primary:hover {
+            color: white !important;
+        }
+    </style>
 </head>
 <body>
 <!-- Navbar moderne avec animation subtile au scroll -->
@@ -179,7 +186,7 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
                     </li>
                 <?php else: ?>
                     <li class="nav-item">
-                        <a class="btn btn-primary" href="<?php echo url('auth', 'login'); ?>">
+                        <a class="btn btn-primary text-white" href="<?php echo url('auth', 'login'); ?>">
                             <i class="fas fa-sign-in-alt me-1"></i> Connexion
                         </a>
                     </li>

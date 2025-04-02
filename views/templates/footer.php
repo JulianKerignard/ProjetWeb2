@@ -37,7 +37,7 @@ if (!defined('ROOT_PATH')) {
                     <li><a href="<?php echo url(); ?>"><i class="fas fa-chevron-right me-2"></i>Accueil</a></li>
                     <li><a href="<?php echo url('offres'); ?>"><i class="fas fa-chevron-right me-2"></i>Offres de stage</a></li>
                     <li><a href="<?php echo url('entreprises'); ?>"><i class="fas fa-chevron-right me-2"></i>Entreprises</a></li>
-                    <li><a href="<?php echo url('mentions légales'); ?>"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
+                    <li><a href="<?php echo url('mentions-legales'); ?>"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
                     <?php if (isLoggedIn() && $_SESSION['role'] === ROLE_ETUDIANT): ?>
                         <li><a href="<?php echo url('candidatures', 'mes-candidatures'); ?>"><i class="fas fa-chevron-right me-2"></i>Mes candidatures</a></li>
                         <li><a href="<?php echo url('candidatures', 'afficher-wishlist'); ?>"><i class="fas fa-chevron-right me-2"></i>Ma liste de souhaits</a></li>
