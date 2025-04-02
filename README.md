@@ -1,3 +1,9 @@
+![Version PHP](https://img.shields.io/badge/PHP-%5E7.4-blue)
+![Version Laravel](https://img.shields.io/badge/Laravel-8.x-blue)
+![Version MySQL](https://img.shields.io/badge/MySQL-5.7+-blue)
+![Version Apache](https://img.shields.io/badge/Apache-2.4+-blue)
+![Version Node](https://img.shields.io/badge/Node.js-14.x-blue)
+
 # 🎓 Plateforme de Gestion des Stages CESI
 
 ## 🚀 Présentation du Projet
