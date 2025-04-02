@@ -74,6 +74,15 @@ class OffreController {
     }
 
     /**
+     * Recherche d'offres selon critères
+     * Cette méthode est un alias de index() pour maintenir la cohérence des routes
+     */
+    public function rechercher() {
+        // Réutiliser la logique existante de index() qui gère déjà les filtres
+        $this->index();
+    }
+
+    /**
      * Affiche les détails d'une offre
      */
     public function detail() {
