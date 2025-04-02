@@ -13,6 +13,7 @@ include ROOT_PATH . '/views/templates/header.php';
 <link rel="stylesheet" type="text/css" href="/public/css/styles.css">
 
  <div class="container mt-4">
+    <h1 class="h2">Mentions Légales</h1>
  	<p>**Mentions Légales**
 
 **1. Éditeur du site**  
