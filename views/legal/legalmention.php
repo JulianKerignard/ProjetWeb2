@@ -1,22 +1,14 @@
 <?php
+// Titre de la page
 if (!defined('ROOT_PATH')) {
-    // Définir les chemins manuellement pour un accès direct
-    define('ROOT_PATH', dirname(__DIR__)); // Remonte d'un niveau depuis /views
-
-    // Charger les fichiers nécessaires
-    require_once ROOT_PATH . '/config/config.php';
-    require_once ROOT_PATH . '/includes/functions.php';
-
-    // Démarrer la session si elle n'est pas déjà démarrée
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    require_once realpath(dirname(__FILE__) . '/../../bootstrap.php');
 }
 
 // Titre de la page
-$pageTitle = "Accueil";
-include ROOT_PATH . '/views/templates/header.php';
+$pageTitle = "Mentions légales";
+// Protection contre l'exécution directe sans données du contrôleur
 
+include ROOT_PATH . '/views/templates/header.php';	
 ?>
 
 <link rel="stylesheet" type="text/css" href="/public/css/styles.css">
@@ -56,4 +48,4 @@ Pour toute question, vous pouvez nous contacter à : [Adresse e-mail de contact]
  </div>
 
 
- <?php include ROOT_PATH . '/views/templates/footer.php';
+ <?php include ROOT_PATH . '/views/templates/footer.php'; ?>
