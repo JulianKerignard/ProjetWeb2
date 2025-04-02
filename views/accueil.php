@@ -19,32 +19,31 @@ $pageTitle = "Accueil";
 include ROOT_PATH . '/views/templates/header.php';
 ?>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6 hero-content">
-                    <h1 class="display-4 fw-bold mb-4">Trouvez le Stage idéal pour votre carrière</h1>
-                    <p class="lead mb-5">Une plateforme complète pour vous aider dans votre recherche de stage et faciliter votre entrée dans le monde professionnel.</p>
-                    <?php if (!isLoggedIn()): ?>
-                        <div class="d-grid gap-2 d-md-flex">
-                            <a href="<?php echo url('auth', 'login'); ?>" class="btn btn-primary btn-lg px-5 me-md-2">
-                                <i class="fas fa-sign-in-alt me-2"></i>Se connecter
-                            </a>
-                            <a href="#features" class="btn btn-outline-primary btn-lg px-5">
-                                <i class="fas fa-info-circle me-2"></i>En savoir plus
-                            </a>
-                        </div>
-                    <?php else: ?>
-                        <div class="d-grid gap-2 d-md-flex">
-                            <a href="<?php echo url('offres'); ?>" class="btn btn-primary btn-lg px-5 me-md-2">
-                                <i class="fas fa-search me-2"></i>Voir les offres
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <div class="col-lg-6 d-none d-lg-block">
-                    <img src="<?php echo URL_ROOT; ?>/public/img/hero-image.jpg" alt="Stage" class="img-fluid hero-image">
+    <!-- Hero Section avec image en arrière-plan -->
+    <section class="hero-section">
+        <div class="hero-overlay">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-8 col-md-10 mx-auto hero-content">
+                        <h1 class="display-4 fw-bold mb-4 text-white">Trouvez le Stage idéal pour votre carrière</h1>
+                        <p class="lead mb-5 text-white">Une plateforme complète pour vous aider dans votre recherche de stage et faciliter votre entrée dans le monde professionnel.</p>
+                        <?php if (!isLoggedIn()): ?>
+                            <div class="d-grid gap-2 d-md-flex">
+                                <a href="<?php echo url('auth', 'login'); ?>" class="btn btn-primary btn-lg px-5 me-md-2">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                                </a>
+                                <a href="#features" class="btn btn-light btn-lg px-5">
+                                    <i class="fas fa-info-circle me-2"></i>En savoir plus
+                                </a>
+                            </div>
+                        <?php else: ?>
+                            <div class="d-grid gap-2 d-md-flex">
+                                <a href="<?php echo url('offres'); ?>" class="btn btn-primary btn-lg px-5 me-md-2">
+                                    <i class="fas fa-search me-2"></i>Voir les offres
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
