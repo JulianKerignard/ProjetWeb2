@@ -57,7 +57,8 @@ function cleanData($data) {
  * @return bool
  */
 function isLoggedIn() {
-    return isset($_SESSION['user_id']);
+    // Vérification robuste de l'état de la session
+    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 }
 
 /**
@@ -66,7 +67,17 @@ function isLoggedIn() {
  * @return bool
  */
 function hasRole($role) {
-    return isLoggedIn() && isset($_SESSION['role']) && $_SESSION['role'] == $role;
+    // Vérification préalable de la connexion et de l'existence du rôle
+    if (!isLoggedIn() || !isset($_SESSION['role'])) {
+        return false;
+    }
+
+    // Traitement spécial pour le rôle administrateur qui a tous les accès
+    if ($_SESSION['role'] === ROLE_ADMIN) {
+        return true;
+    }
+
+    return $_SESSION['role'] == $role;
 }
 
 /**

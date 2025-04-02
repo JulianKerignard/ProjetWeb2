@@ -1,0 +1,115 @@
+/**
+ * Styles personnalisés supplémentaires pour l'application
+ * Ce fichier contient des améliorations visuelles pour les liens, le footer et la navbar
+ */
+
+/* Améliorations pour le footer */
+footer a {
+    transition: all 0.3s ease;
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+}
+
+footer a:hover {
+    transform: translateX(5px);
+    color: var(--primary-light) !important;
+}
+
+footer .social-links {
+    display: flex;
+    gap: 0.8rem;
+}
+
+footer .social-link {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+footer .social-link:hover {
+    background-color: var(--primary);
+    transform: translateY(-3px);
+}
+
+/* Animation au survol des éléments de la navbar */
+.navbar-nav .nav-link {
+    transition: transform 0.3s ease, color 0.3s ease, background-color 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    transform: translateY(-2px);
+}
+
+.dropdown-item {
+    transition: transform 0.3s ease, color 0.3s ease, background-color 0.3s ease;
+}
+
+.dropdown-item:hover {
+    transform: translateX(3px);
+}
+
+/* Styles spécifiques pour la section Entreprises */
+.stars .fas.fa-star {
+    color: #ffc107;
+}
+
+.stars .far.fa-star {
+    color: #e2e8f0;
+}
+
+/* Amélioration des cartes */
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Boutons avec effet de survol amélioré */
+.btn {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.btn:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Style pour les badges */
+.badge {
+    transition: all 0.3s ease;
+}
+
+.badge:hover {
+    transform: scale(1.1);
+}
+
+/* Style pour l'alerte de confirmation */
+.alert-confirmation {
+    border-left: 4px solid var(--primary);
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+/* Amélioration de l'accessibilité et du contraste */
+.text-muted {
+    color: #64748b !important; /* Couleur plus foncée pour une meilleure lisibilité */
+}
+
+/* Animation du bouton "Back to top" */
+#btn-back-to-top {
+    transition: all 0.3s ease;
+}
+
+#btn-back-to-top:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}

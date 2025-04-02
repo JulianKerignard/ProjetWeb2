@@ -101,7 +101,6 @@ function exceptionHandler($exception) {
 
     exit(1);
 }
-require_once ROOT_PATH . '/config/error_handler.php';
 
 // Définir le gestionnaire d'exceptions
 set_exception_handler("exceptionHandler");

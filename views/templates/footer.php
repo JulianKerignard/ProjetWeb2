@@ -37,7 +37,15 @@ if (!defined('ROOT_PATH')) {
                     <li><a href="<?php echo url(); ?>"><i class="fas fa-chevron-right me-2"></i>Accueil</a></li>
                     <li><a href="<?php echo url('offres'); ?>"><i class="fas fa-chevron-right me-2"></i>Offres de stage</a></li>
                     <li><a href="<?php echo url('entreprises'); ?>"><i class="fas fa-chevron-right me-2"></i>Entreprises</a></li>
+<<<<<<< HEAD
                     <li><a href="<?php echo url('mentions légales'); ?>"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
+=======
+                    <?php if (isLoggedIn() && $_SESSION['role'] === ROLE_ETUDIANT): ?>
+                        <li><a href="<?php echo url('candidatures', 'mes-candidatures'); ?>"><i class="fas fa-chevron-right me-2"></i>Mes candidatures</a></li>
+                        <li><a href="<?php echo url('candidatures', 'afficher-wishlist'); ?>"><i class="fas fa-chevron-right me-2"></i>Ma liste de souhaits</a></li>
+                    <?php endif; ?>
+                    <li><a href="#"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
+>>>>>>> master
                 </ul>
             </div>
 
@@ -45,10 +53,23 @@ if (!defined('ROOT_PATH')) {
                 <h5>Contact</h5>
                 <address>
                     <p><i class="fas fa-map-marker-alt me-3"></i> 1 Avenue des Stages, 75000 Paris</p>
+<<<<<<< HEAD
                     <p><i class="fas fa-envelope me-3"></i> contact@web4all.fr</p>
                     <p><i class="fas fa-phone me-3"></i> +33 7 66 85 63 90</p>
+=======
+                    <p><i class="fas fa-envelope me-3"></i> <a href="mailto:contact@web4all.fr">contact@web4all.fr</a></p>
+                    <p><i class="fas fa-phone me-3"></i> <a href="tel:+33123456789">+33 1 23 45 67 89</a></p>
+>>>>>>> master
                     <p><i class="fas fa-clock me-3"></i> Lun-Ven: 9h00-18h00</p>
                 </address>
+
+                <h5 class="mt-4">Suivez-nous</h5>
+                <div class="social-links mt-3">
+                    <a href="#" class="social-link" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social-link" title="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="#" class="social-link" title="Instagram"><i class="fab fa-instagram"></i></a>
+                </div>
             </div>
         </div>
 

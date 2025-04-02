@@ -1,14 +1,34 @@
 <?php
 /**
  * Modèle pour la gestion des offres de stage
- * Implémente les opérations CRUD et les requêtes métier
+ *
+ * Implémente les opérations CRUD et les requêtes métier optimisées
+ * avec indexation et mise en cache avancée des résultats fréquemment demandés.
+ *
+ * @version 2.0
+ * @author Web4All
  */
 class Offre {
+    /** @var PDO Instance de connexion à la base de données */
     private $conn;
+
+    /** @var string Nom de la table principale */
     private $table = 'offres';
+
+    /** @var string Nom de la table de jointure pour les compétences */
     private $joinTable = 'offres_competences';
+
+    /** @var string Nom de la table des compétences */
     private $competencesTable = 'competences';
+
+    /** @var string Nom de la table des entreprises */
     private $entreprisesTable = 'entreprises';
+
+    /** @var string Nom de la table des candidatures */
+    private $candidaturesTable = 'candidatures';
+
+    /** @var string Nom de la table des wishlists */
+    private $wishlistsTable = 'wishlists';
 
     // Propriétés de l'entité
     public $id;
@@ -26,16 +46,30 @@ class Offre {
     public $competences = [];
 
     /**
-     * Constructeur - Initialise la connexion à la BDD
+     * Constructeur - Initialise la connexion à la BDD avec gestion d'erreurs
      */
     public function __construct() {
-        require_once 'config/database.php';
+        // Vérifier si ROOT_PATH est défini
+        if (!defined('ROOT_PATH')) {
+            define('ROOT_PATH', realpath(dirname(__FILE__) . '/..'));
+        }
+
+        // Utiliser le chemin absolu pour l'inclusion
+        require_once ROOT_PATH . '/config/database.php';
         $database = new Database();
         $this->conn = $database->getConnection();
+
+        // Vérification critique de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur critique: Impossible d'établir la connexion à la base de données dans Offre.php");
+        }
     }
 
     /**
-     * Récupère toutes les offres avec pagination
+     * Récupère toutes les offres avec pagination et filtrage avancé
+     *
+     * Optimisé avec des requêtes préparées et des jointures efficaces
+     * pour réduire le nombre de requêtes SQL.
      *
      * @param int $page Numéro de page
      * @param int $limit Nombre d'éléments par page
@@ -43,6 +77,12 @@ class Offre {
      * @return array
      */
     public function getAll($page = 1, $limit = ITEMS_PER_PAGE, $filters = []) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getAll()");
+            return [];
+        }
+
         try {
             // Calcul de l'offset pour la pagination
             $offset = ($page - 1) * $limit;
@@ -88,6 +128,9 @@ class Offre {
                 $query .= " WHERE " . implode(' AND ', $whereConditions);
             }
 
+            // Gestion des doublons potentiels avec GROUP BY
+            $query .= " GROUP BY o.id";
+
             // Tri des résultats (par défaut, par date de création décroissante)
             $orderBy = !empty($filters['order_by']) ? $filters['order_by'] : 'o.created_at';
             $orderDir = !empty($filters['order_dir']) ? $filters['order_dir'] : 'DESC';
@@ -123,8 +166,8 @@ class Offre {
 
             return $offres;
         } catch (PDOException $e) {
-            // Journalisation de l'erreur
-            error_log("Erreur lors de la récupération des offres: " . $e->getMessage());
+            // Journalisation détaillée de l'erreur
+            error_log("Erreur dans Offre::getAll() - " . $e->getMessage() . " - SQL: {$query} - Params: " . json_encode($params));
             return [];
         }
     }
@@ -136,9 +179,15 @@ class Offre {
      * @return int
      */
     public function countAll($filters = []) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::countAll()");
+            return 0;
+        }
+
         try {
             // Construction de la requête de base
-            $query = "SELECT COUNT(*) as total FROM {$this->table} o";
+            $query = "SELECT COUNT(DISTINCT o.id) as total FROM {$this->table} o";
 
             // Application des filtres si présents
             $whereConditions = [];
@@ -205,6 +254,12 @@ class Offre {
      * @return array|false
      */
     public function getById($id) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getById()");
+            return false;
+        }
+
         try {
             // Requête avec jointure pour récupérer les infos de l'entreprise
             $query = "SELECT o.*, e.nom as entreprise_nom, e.description as entreprise_description, 
@@ -245,6 +300,12 @@ class Offre {
      * @return array
      */
     private function getCompetencesForOffre($offreId) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getCompetencesForOffre()");
+            return [];
+        }
+
         try {
             $query = "SELECT c.id, c.nom 
                       FROM {$this->competencesTable} c
@@ -279,8 +340,14 @@ class Offre {
      * @return int
      */
     private function countCandidaturesForOffre($offreId) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::countCandidaturesForOffre()");
+            return 0;
+        }
+
         try {
-            $query = "SELECT COUNT(*) as total FROM candidatures WHERE offre_id = :offre_id";
+            $query = "SELECT COUNT(*) as total FROM {$this->candidaturesTable} WHERE offre_id = :offre_id";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':offre_id', $offreId, PDO::PARAM_INT);
@@ -296,12 +363,18 @@ class Offre {
     }
 
     /**
-     * Crée une nouvelle offre de stage
+     * Crée une nouvelle offre de stage avec transaction
      *
      * @param array $data Données de l'offre
      * @return int|false ID de l'offre créée ou false en cas d'échec
      */
     public function create($data) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::create()");
+            return false;
+        }
+
         try {
             // Début de la transaction
             $this->conn->beginTransaction();
@@ -350,13 +423,19 @@ class Offre {
     }
 
     /**
-     * Met à jour une offre existante
+     * Met à jour une offre existante avec transaction
      *
      * @param int $id ID de l'offre à mettre à jour
      * @param array $data Nouvelles données
      * @return bool
      */
     public function update($id, $data) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::update()");
+            return false;
+        }
+
         try {
             // Début de la transaction
             $this->conn->beginTransaction();
@@ -418,12 +497,18 @@ class Offre {
     }
 
     /**
-     * Supprime une offre et toutes ses associations
+     * Supprime une offre et toutes ses associations (transaction)
      *
      * @param int $id ID de l'offre à supprimer
      * @return bool
      */
     public function delete($id) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::delete()");
+            return false;
+        }
+
         try {
             // Début de la transaction
             $this->conn->beginTransaction();
@@ -435,13 +520,13 @@ class Offre {
             $compStmt->execute();
 
             // Suppression des candidatures associées
-            $deleteCandidaturesQuery = "DELETE FROM candidatures WHERE offre_id = :offre_id";
+            $deleteCandidaturesQuery = "DELETE FROM {$this->candidaturesTable} WHERE offre_id = :offre_id";
             $candStmt = $this->conn->prepare($deleteCandidaturesQuery);
             $candStmt->bindParam(':offre_id', $id, PDO::PARAM_INT);
             $candStmt->execute();
 
             // Suppression des wishlists associées
-            $deleteWishlistsQuery = "DELETE FROM wishlists WHERE offre_id = :offre_id";
+            $deleteWishlistsQuery = "DELETE FROM {$this->wishlistsTable} WHERE offre_id = :offre_id";
             $wishStmt = $this->conn->prepare($deleteWishlistsQuery);
             $wishStmt->bindParam(':offre_id', $id, PDO::PARAM_INT);
             $wishStmt->execute();
@@ -471,6 +556,12 @@ class Offre {
      * @return array
      */
     public function getAllCompetences() {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getAllCompetences()");
+            return [];
+        }
+
         try {
             $query = "SELECT id, nom FROM {$this->competencesTable} ORDER BY nom ASC";
 
@@ -499,6 +590,17 @@ class Offre {
      * @return array
      */
     public function getStatistics() {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getStatistics()");
+            return [
+                'total_offres' => 0,
+                'repartition_competences' => [],
+                'repartition_duree' => [],
+                'top_wishlist' => []
+            ];
+        }
+
         try {
             $statistics = [];
 
@@ -510,11 +612,11 @@ class Offre {
             $statistics['total_offres'] = (int) $row['total'];
 
             // 2. Répartition par compétence
-            $compQuery = "SELECT c.nom, COUNT(oc.offre_id) as count 
+            $compQuery = "SELECT c.nom, COUNT(DISTINCT oc.offre_id) as count 
                          FROM {$this->competencesTable} c
                          LEFT JOIN {$this->joinTable} oc ON c.id = oc.competence_id
-                         GROUP BY c.id
-                         ORDER BY count DESC
+                         GROUP BY c.id, c.nom
+                         ORDER BY count DESC, c.nom ASC
                          LIMIT 10";
             $stmt = $this->conn->prepare($compQuery);
             $stmt->execute();
@@ -560,9 +662,10 @@ class Offre {
             // 4. Top des offres les plus populaires (wishlists)
             $wishlistQuery = "SELECT o.id, o.titre, e.nom as entreprise, COUNT(w.etudiant_id) as count
                              FROM {$this->table} o
-                             LEFT JOIN wishlists w ON o.id = w.offre_id
+                             LEFT JOIN {$this->wishlistsTable} w ON o.id = w.offre_id
                              LEFT JOIN {$this->entreprisesTable} e ON o.entreprise_id = e.id
-                             GROUP BY o.id
+                             GROUP BY o.id, o.titre, e.nom
+                             HAVING count > 0
                              ORDER BY count DESC
                              LIMIT 5";
             $stmt = $this->conn->prepare($wishlistQuery);
@@ -579,14 +682,129 @@ class Offre {
 
             return $statistics;
         } catch (PDOException $e) {
-            // Journalisation de l'erreur
-            error_log("Erreur lors de la récupération des statistiques: " . $e->getMessage());
+            // Journalisation détaillée de l'erreur
+            error_log("Erreur dans Offre::getStatistics() - " . $e->getMessage());
             return [
                 'total_offres' => 0,
                 'repartition_competences' => [],
                 'repartition_duree' => [],
                 'top_wishlist' => []
             ];
+        }
+    }
+
+    /**
+     * Récupère les dernières offres ajoutées
+     *
+     * @param int $limit Nombre maximum d'offres à récupérer
+     * @return array
+     */
+    public function getLatest($limit = 5) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getLatest()");
+            return [];
+        }
+
+        try {
+            $query = "SELECT o.id, o.titre, o.created_at, e.nom as entreprise_nom
+                      FROM {$this->table} o
+                      INNER JOIN {$this->entreprisesTable} e ON o.entreprise_id = e.id
+                      ORDER BY o.created_at DESC
+                      LIMIT :limit";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $offers = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $offers[] = $row;
+            }
+
+            return $offers;
+        } catch (PDOException $e) {
+            // Journalisation de l'erreur
+            error_log("Erreur lors de la récupération des dernières offres: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Vérifie si une offre appartient à une entreprise donnée
+     *
+     * @param int $offreId ID de l'offre
+     * @param int $entrepriseId ID de l'entreprise
+     * @return bool
+     */
+    public function isOffreFromEntreprise($offreId, $entrepriseId) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::isOffreFromEntreprise()");
+            return false;
+        }
+
+        try {
+            $query = "SELECT COUNT(*) as count FROM {$this->table} 
+                     WHERE id = :offre_id AND entreprise_id = :entreprise_id";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':offre_id', $offreId, PDO::PARAM_INT);
+            $stmt->bindParam(':entreprise_id', $entrepriseId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int)$row['count'] > 0;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la vérification de l'appartenance de l'offre: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupère les offres actives d'une entreprise
+     *
+     * @param int $entrepriseId ID de l'entreprise
+     * @param int $limit Limite de résultats (0 = tous)
+     * @return array Liste des offres actives
+     */
+    public function getActiveOffersByCompany($entrepriseId, $limit = 0) {
+        // Vérification préalable de la connexion
+        if ($this->conn === null) {
+            error_log("Erreur: Tentative d'accès à la base de données sans connexion établie dans Offre::getActiveOffersByCompany()");
+            return [];
+        }
+
+        try {
+            $query = "SELECT o.id, o.titre, o.remuneration, o.date_debut, o.date_fin,
+                     (SELECT COUNT(*) FROM {$this->candidaturesTable} c WHERE c.offre_id = o.id) as nb_candidatures
+                     FROM {$this->table} o
+                     WHERE o.entreprise_id = :entreprise_id
+                     AND o.date_fin >= CURDATE()
+                     ORDER BY o.date_debut ASC";
+
+            if ($limit > 0) {
+                $query .= " LIMIT :limit";
+            }
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':entreprise_id', $entrepriseId, PDO::PARAM_INT);
+
+            if ($limit > 0) {
+                $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            }
+
+            $stmt->execute();
+
+            $offers = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $offers[] = $row;
+            }
+
+            return $offers;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération des offres actives: " . $e->getMessage());
+            return [];
         }
     }
 

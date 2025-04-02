@@ -27,6 +27,9 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
 
     <!-- Styles personnalisés - Nouveau design moderne -->
     <link href="<?php echo URL_ROOT; ?>/public/css/style.css" rel="stylesheet">
+
+    <!-- Styles personnalisés supplémentaires -->
+    <link href="<?php echo URL_ROOT; ?>/public/css/custom.css" rel="stylesheet">
 </head>
 <body>
 <!-- Navbar moderne avec animation subtile au scroll -->
@@ -86,20 +89,49 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
                     </ul>
                 </li>
 
-                <?php if (isLoggedIn()): ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo (isset($_GET['page']) && $_GET['page'] === 'entreprises') ? 'active' : ''; ?>" href="<?php echo url('entreprises'); ?>">
-                            <i class="fas fa-building me-1"></i> Entreprises
-                        </a>
-                    </li>
+                <!-- Menu Entreprises - Toujours visible pour tous les utilisateurs -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle <?php echo (isset($_GET['page']) && $_GET['page'] === 'entreprises') ? 'active' : ''; ?>"
+                       href="#" id="entreprisesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-building me-1"></i> Entreprises
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="entreprisesDropdown">
+                        <li>
+                            <a class="dropdown-item" href="<?php echo url('entreprises'); ?>">
+                                <i class="fas fa-list me-2"></i> Toutes les entreprises
+                            </a>
+                        </li>
+                        <?php if (isLoggedIn() && checkAccess('entreprise_creer')): ?>
+                            <li>
+                                <a class="dropdown-item" href="<?php echo url('entreprises', 'creer'); ?>">
+                                    <i class="fas fa-plus-circle me-2"></i> Ajouter une entreprise
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo url('entreprises', 'rechercher'); ?>">
+                                <i class="fas fa-search me-2"></i> Recherche avancée
+                            </a>
+                        </li>
+                    </ul>
+                </li>
 
+                <?php if (isLoggedIn()): ?>
                     <?php if (isAdmin() || isPilote()): ?>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle <?php echo (isset($_GET['page']) && ($_GET['page'] === 'admin' || $_GET['page'] === 'pilotes' || $_GET['page'] === 'etudiants')) ? 'active' : ''; ?>" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-user-shield me-1"></i> Administration
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                                 <?php if (isAdmin()): ?>
+                                    <li><a class="dropdown-item" href="<?php echo url('admin'); ?>">
+                                            <i class="fas fa-tachometer-alt me-2"></i> Tableau de bord
+                                        </a></li>
+                                    <li><a class="dropdown-item" href="<?php echo url('admin', 'stats'); ?>">
+                                            <i class="fas fa-chart-line me-2"></i> Statistiques détaillées
+                                        </a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="<?php echo url('pilotes'); ?>">
                                             <i class="fas fa-user-tie me-2"></i> Pilotes
                                         </a></li>
