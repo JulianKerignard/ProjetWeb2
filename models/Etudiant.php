@@ -5,7 +5,7 @@
  * Implémente les opérations CRUD et les services spécifiques aux étudiants
  * avec optimisations des requêtes et gestion robuste des erreurs.
  *
- * @version 2.0
+ * @version 2.1
  * @author Web4All
  */
 class Etudiant {
@@ -61,6 +61,72 @@ class Etudiant {
      */
     public function hasError() {
         return $this->dbError;
+    }
+
+    /**
+     * Récupère un étudiant par ID utilisateur
+     *
+     * @param int $userId ID de l'utilisateur
+     * @return array|false Données de l'étudiant ou false si non trouvé
+     */
+    public function getByUserId($userId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "SELECT e.*, u.email, u.role
+                     FROM {$this->table} e
+                     JOIN {$this->usersTable} u ON e.user_id = u.id
+                     WHERE e.user_id = :user_id";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() == 0) {
+                error_log("Aucun étudiant trouvé pour l'ID utilisateur: $userId");
+                return false;
+            }
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération de l'étudiant par ID utilisateur: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupère l'ID étudiant correspondant à un ID utilisateur
+     *
+     * @param int $userId ID utilisateur
+     * @return int|false ID étudiant ou false si non trouvé
+     */
+    public function getEtudiantIdFromUserId($userId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "SELECT id FROM {$this->table} WHERE user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() == 0) {
+                error_log("Aucun ID étudiant trouvé pour l'ID utilisateur: $userId");
+                return false;
+            }
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int)$row['id'];
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération de l'ID étudiant: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -671,6 +737,133 @@ class Etudiant {
                 'with_candidatures' => 0,
                 'avg_candidatures' => 0,
                 'most_active' => []
+            ];
+        }
+    }
+
+    /**
+     * Crée automatiquement un profil étudiant pour un utilisateur avec le rôle 'etudiant'
+     * qui n'a pas de profil étudiant associé
+     *
+     * @param int $userId ID de l'utilisateur
+     * @param string $nom Nom de l'étudiant (facultatif)
+     * @param string $prenom Prénom de l'étudiant (facultatif)
+     * @return int|false ID du profil étudiant créé ou false en cas d'échec
+     */
+    public function createProfileForUser($userId, $nom = 'Nom', $prenom = 'Prenom') {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            // Vérifier si l'utilisateur existe et a le rôle 'etudiant'
+            $userQuery = "SELECT id, email, role FROM {$this->usersTable} WHERE id = :id AND role = 'etudiant'";
+            $userStmt = $this->conn->prepare($userQuery);
+            $userStmt->bindParam(':id', $userId, PDO::PARAM_INT);
+            $userStmt->execute();
+
+            if ($userStmt->rowCount() == 0) {
+                error_log("Impossible de créer un profil étudiant pour l'utilisateur $userId: soit l'utilisateur n'existe pas, soit il n'a pas le rôle 'etudiant'");
+                return false;
+            }
+
+            $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Vérifier si un profil étudiant existe déjà
+            $checkQuery = "SELECT id FROM {$this->table} WHERE user_id = :user_id";
+            $checkStmt = $this->conn->prepare($checkQuery);
+            $checkStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $checkStmt->execute();
+
+            if ($checkStmt->rowCount() > 0) {
+                $existingProfile = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                error_log("Un profil étudiant existe déjà pour l'utilisateur $userId (étudiant ID: {$existingProfile['id']})");
+                return $existingProfile['id'];
+            }
+
+            // Création du profil étudiant
+            $createQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, created_at)
+                           VALUES (:user_id, :nom, :prenom, NOW())";
+
+            $createStmt = $this->conn->prepare($createQuery);
+            $createStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $createStmt->bindParam(':nom', $nom);
+            $createStmt->bindParam(':prenom', $prenom);
+            $createStmt->execute();
+
+            $etudiantId = $this->conn->lastInsertId();
+
+            error_log("Profil étudiant créé automatiquement pour l'utilisateur $userId (étudiant ID: $etudiantId)");
+
+            return $etudiantId;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la création automatique du profil étudiant: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Vérifie et répare les relations utilisateur-étudiant
+     *
+     * @return array Résultats de la vérification/réparation
+     */
+    public function verifyAndRepairUserStudentRelations() {
+        // Mode dégradé - retourne structure vide
+        if ($this->dbError) {
+            return [
+                'status' => 'error',
+                'message' => 'Connexion à la base de données non disponible',
+                'repairs' => 0
+            ];
+        }
+
+        try {
+            // Identifier les utilisateurs de rôle 'etudiant' sans entrée dans la table etudiants
+            $query = "SELECT u.id, u.email, u.role
+                     FROM {$this->usersTable} u
+                     LEFT JOIN {$this->table} e ON u.id = e.user_id
+                     WHERE u.role = 'etudiant' AND e.id IS NULL";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            $usersWithoutProfile = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $repairs = 0;
+            $failed = 0;
+
+            // Créer les profils manquants
+            foreach ($usersWithoutProfile as $user) {
+                $emailParts = explode('@', $user['email']);
+                $username = $emailParts[0];
+
+                // Extraire nom et prénom du nom d'utilisateur (si possible)
+                $parts = explode('.', $username);
+                $prenom = ucfirst($parts[0] ?? 'Prenom');
+                $nom = ucfirst($parts[1] ?? 'Nom');
+
+                $result = $this->createProfileForUser($user['id'], $nom, $prenom);
+
+                if ($result) {
+                    $repairs++;
+                } else {
+                    $failed++;
+                }
+            }
+
+            return [
+                'status' => 'success',
+                'message' => "Vérification terminée. $repairs profils créés, $failed échecs.",
+                'repairs' => $repairs,
+                'failed' => $failed,
+                'identified' => count($usersWithoutProfile)
+            ];
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la vérification/réparation des relations utilisateur-étudiant: " . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => "Erreur lors de la vérification: " . $e->getMessage(),
+                'repairs' => 0
             ];
         }
     }

@@ -6,7 +6,7 @@
  * et de gestion de la liste de souhaits avec validation des droits
  * d'accès et gestion robuste des erreurs.
  *
- * @version 1.1
+ * @version 1.2
  */
 class CandidatureController {
     private $candidatureModel;
@@ -24,10 +24,10 @@ class CandidatureController {
         }
 
         // Vérification de rôle souple pour les actions spécifiques
-        $restrictedActions = ['mes-candidatures', 'afficher-wishlist'];
+        $restrictedActions = ['mes-candidatures', 'afficher-wishlist', 'postuler'];
         $currentAction = isset($_GET['action']) ? $_GET['action'] : '';
 
-        if (in_array($currentAction, $restrictedActions) && $_SESSION['role'] !== ROLE_ETUDIANT) {
+        if (in_array($currentAction, $restrictedActions) && !$this->isUserEtudiant()) {
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Vous n'avez pas les droits nécessaires pour accéder à cette page."
@@ -46,15 +46,57 @@ class CandidatureController {
     }
 
     /**
+     * Vérifie si l'utilisateur connecté est un étudiant
+     *
+     * @return bool
+     */
+    private function isUserEtudiant() {
+        return isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT;
+    }
+
+    /**
+     * Récupère l'ID étudiant correspondant à l'utilisateur connecté
+     *
+     * @return int|false ID étudiant ou false en cas d'erreur
+     */
+    private function getCurrentEtudiantId() {
+        // Si déjà en cache dans la session, retourner directement
+        if (isset($_SESSION['etudiant_id'])) {
+            return $_SESSION['etudiant_id'];
+        }
+
+        // Sinon, chercher dans la base de données
+        $etudiantId = $this->etudiantModel->getEtudiantIdFromUserId($_SESSION['user_id']);
+
+        // Mettre en cache dans la session pour les futures requêtes
+        if ($etudiantId) {
+            $_SESSION['etudiant_id'] = $etudiantId;
+        }
+
+        return $etudiantId;
+    }
+
+    /**
      * Affiche les candidatures de l'étudiant connecté
      */
     public function mesCandidatures() {
+        // Récupération de l'ID étudiant
+        $etudiantId = $this->getCurrentEtudiantId();
+
+        if (!$etudiantId) {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
+            ];
+            redirect(url());
+        }
+
         // Récupération du numéro de page courant
         $page = getCurrentPage();
 
         // Construction des filtres
         $filters = [
-            'etudiant_id' => $_SESSION['user_id']
+            'etudiant_id' => $etudiantId
         ];
 
         // Filtres de date éventuels
@@ -88,8 +130,7 @@ class CandidatureController {
         error_log("offre_id = $offre_id");
 
         if ($offre_id <= 0) {
-            error_log("ID invalide, redirection...");
-            // Redirection vers la liste des offres si ID invalide
+            error_log("ID offre invalide, redirection...");
             redirect(url('offres'));
         }
 
@@ -99,36 +140,41 @@ class CandidatureController {
 
         if (!$offre) {
             error_log("Offre non trouvée, redirection...");
-            // Redirection vers la liste des offres si offre non trouvée
             redirect(url('offres'));
         }
 
-        // Vérification conditionnelle de candidature existante
-        $hasCandidature = false;
-        if (isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT) {
-            error_log("Test de candidature existante pour user_id=" . $_SESSION['user_id'] . " et offre_id=$offre_id");
-            $hasCandidature = $this->candidatureModel->hasCandidature($_SESSION['user_id'], $offre_id);
-            error_log("hasCandidature = " . ($hasCandidature ? "true" : "false"));
+        // Récupération de l'ID étudiant
+        $etudiantId = $this->getCurrentEtudiantId();
+        error_log("ID étudiant récupéré: " . ($etudiantId ? $etudiantId : "non trouvé"));
 
-            if ($hasCandidature) {
-                error_log("Candidature existante, redirection...");
-                $_SESSION['flash_message'] = [
-                    'type' => 'warning',
-                    'message' => "Vous avez déjà postulé à cette offre."
-                ];
-                redirect(url('offres', 'detail', ['id' => $offre_id]));
-            }
-        } else {
-            error_log("Utilisateur non étudiant ou non connecté: " . (isset($_SESSION['role']) ? $_SESSION['role'] : 'non défini'));
+        if (!$etudiantId) {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur: Votre profil étudiant n'a pas été trouvé. Veuillez contacter l'administrateur."
+            ];
+            error_log("Profil étudiant non trouvé pour l'utilisateur " . $_SESSION['user_id']);
+            redirect(url('offres', 'detail', ['id' => $offre_id]));
+        }
+
+        // Vérification de candidature existante
+        $hasCandidature = $this->candidatureModel->hasCandidature($etudiantId, $offre_id);
+        error_log("hasCandidature = " . ($hasCandidature ? "true" : "false"));
+
+        if ($hasCandidature) {
+            error_log("Candidature existante, redirection...");
+            $_SESSION['flash_message'] = [
+                'type' => 'warning',
+                'message' => "Vous avez déjà postulé à cette offre."
+            ];
+            redirect(url('offres', 'detail', ['id' => $offre_id]));
         }
 
         $errors = [];
         $success = false;
         $lettre_motivation = "";
-        $isEtudiant = isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT;
 
         // Traitement du formulaire
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isEtudiant) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Traitement du formulaire POST reçu");
 
             // Récupération et nettoyage des données
@@ -171,7 +217,7 @@ class CandidatureController {
 
                 $data = [
                     'offre_id' => $offre_id,
-                    'etudiant_id' => $_SESSION['user_id'],
+                    'etudiant_id' => $etudiantId,
                     'lettre_motivation' => $lettre_motivation
                 ];
 
@@ -196,9 +242,6 @@ class CandidatureController {
         // Titre de la page
         $pageTitle = "Postuler à une offre";
 
-        error_log("Variables transmises à la vue: isEtudiant=" . ($isEtudiant ? "true" : "false"));
-        error_log("Prêt à inclure la vue postuler.php");
-
         // Chargement de la vue
         include VIEWS_PATH . '/candidatures/postuler.php';
 
@@ -213,15 +256,17 @@ class CandidatureController {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
         if ($id <= 0) {
-            // Redirection vers la liste des candidatures si ID invalide
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
         // Récupération des détails de la candidature
         $candidature = $this->candidatureModel->getById($id);
 
+        // Récupération de l'ID étudiant associé à l'utilisateur connecté
+        $etudiantId = $this->getCurrentEtudiantId();
+
         // Vérification que la candidature existe et appartient à l'étudiant connecté
-        if (!$candidature || $candidature['etudiant_id'] != $_SESSION['user_id']) {
+        if (!$candidature || $candidature['etudiant_id'] != $etudiantId) {
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
@@ -240,15 +285,17 @@ class CandidatureController {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
         if ($id <= 0) {
-            // Redirection vers la liste des candidatures si ID invalide
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
         // Récupération des détails de la candidature
         $candidature = $this->candidatureModel->getById($id);
 
+        // Récupération de l'ID étudiant associé à l'utilisateur connecté
+        $etudiantId = $this->getCurrentEtudiantId();
+
         // Vérification que la candidature existe et appartient à l'étudiant connecté
-        if (!$candidature || $candidature['etudiant_id'] != $_SESSION['user_id']) {
+        if (!$candidature || $candidature['etudiant_id'] != $etudiantId) {
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
@@ -282,22 +329,30 @@ class CandidatureController {
      * Affiche la wishlist de l'étudiant connecté
      */
     public function afficherWishlist() {
+        // Récupération de l'ID étudiant
+        $etudiantId = $this->getCurrentEtudiantId();
+
+        if (!$etudiantId) {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
+            ];
+            redirect(url());
+        }
+
         // Récupération du numéro de page courant
         $page = getCurrentPage();
 
         // Récupération de la wishlist
-        $wishlist = $this->candidatureModel->getWishlist($_SESSION['user_id']);
+        $wishlist = $this->candidatureModel->getWishlist($etudiantId);
         $totalWishlist = count($wishlist);
 
         // Pagination manuelle car getWishlist retourne déjà toutes les entrées
         $offset = ($page - 1) * ITEMS_PER_PAGE;
         $wishlist = array_slice($wishlist, $offset, ITEMS_PER_PAGE);
 
-        // Récupération des offres recommandées (basées sur les compétences des offres en wishlist)
+        // Récupération des offres recommandées
         $recommendedOffers = [];
-
-        // Cette partie serait à implémenter dans le modèle Offre
-        // Pour l'instant, on laisse un tableau vide
 
         // Titre de la page
         $pageTitle = "Ma liste de souhaits";
@@ -314,7 +369,6 @@ class CandidatureController {
         $offre_id = isset($_GET['offre_id']) ? (int)$_GET['offre_id'] : 0;
 
         if ($offre_id <= 0) {
-            // Redirection vers la liste des offres si ID invalide
             redirect(url('offres'));
         }
 
@@ -324,8 +378,19 @@ class CandidatureController {
             redirect(url('offres'));
         }
 
+        // Récupération de l'ID étudiant
+        $etudiantId = $this->getCurrentEtudiantId();
+
+        if (!$etudiantId) {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
+            ];
+            redirect(url('offres', 'detail', ['id' => $offre_id]));
+        }
+
         // Ajout à la wishlist
-        $result = $this->candidatureModel->addToWishlist($_SESSION['user_id'], $offre_id);
+        $result = $this->candidatureModel->addToWishlist($etudiantId, $offre_id);
 
         // Message de confirmation
         if ($result === 'already_exists') {
@@ -357,12 +422,22 @@ class CandidatureController {
         $offre_id = isset($_GET['offre_id']) ? (int)$_GET['offre_id'] : 0;
 
         if ($offre_id <= 0) {
-            // Redirection vers la wishlist si ID invalide
+            redirect(url('candidatures', 'afficher-wishlist'));
+        }
+
+        // Récupération de l'ID étudiant
+        $etudiantId = $this->getCurrentEtudiantId();
+
+        if (!$etudiantId) {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
+            ];
             redirect(url('candidatures', 'afficher-wishlist'));
         }
 
         // Retrait de la wishlist
-        $this->candidatureModel->removeFromWishlist($_SESSION['user_id'], $offre_id);
+        $this->candidatureModel->removeFromWishlist($etudiantId, $offre_id);
 
         // Message de confirmation
         $_SESSION['flash_message'] = [

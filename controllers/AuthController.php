@@ -42,6 +42,7 @@ class AuthController {
      * - Protection contre force brute
      * - Validation avancée
      * - Journalisation de sécurité
+     * - Enrichissement de la session avec l'ID étudiant
      */
     public function login() {
         // Si l'utilisateur est déjà connecté, redirection vers l'accueil
@@ -134,6 +135,27 @@ class AuthController {
                     $_SESSION['nom'] = $user['nom'] ?? 'Utilisateur';
                     $_SESSION['prenom'] = $user['prenom'] ?? '';
 
+                    // Si l'utilisateur est un étudiant, récupérer son ID étudiant
+                    if ($user['role'] === ROLE_ETUDIANT) {
+                        require_once MODELS_PATH . '/Etudiant.php';
+                        $etudiantModel = new Etudiant();
+                        $etudiant = $etudiantModel->getByUserId($user['id']);
+
+                        if ($etudiant) {
+                            $_SESSION['etudiant_id'] = $etudiant['id'];
+                            error_log("[AUTH] ID étudiant {$etudiant['id']} associé à l'utilisateur {$user['id']}");
+                        } else {
+                            error_log("[AUTH][CRITICAL] Utilisateur {$user['id']} avec rôle étudiant n'a pas de profil étudiant associé");
+
+                            // Tentative de création automatique d'un profil étudiant
+                            $etudiantId = $etudiantModel->createProfileForUser($user['id']);
+                            if ($etudiantId) {
+                                $_SESSION['etudiant_id'] = $etudiantId;
+                                error_log("[AUTH][RECOVERY] Profil étudiant ID {$etudiantId} créé automatiquement pour l'utilisateur {$user['id']}");
+                            }
+                        }
+                    }
+
                     // Journalisation de sécurité avec données contextuelles
                     error_log(sprintf(
                         "[AUTH][LOGIN] Utilisateur %d (%s) connecté | IP: %s | Agent: %s",
@@ -149,8 +171,14 @@ class AuthController {
                         'message' => "Bienvenue, {$_SESSION['prenom']} {$_SESSION['nom']}!"
                     ];
 
-                    // Redirection vers la page d'accueil
-                    redirect(url());
+                    // Redirection selon présence d'une URL stockée
+                    if (isset($_SESSION['redirect_after_login'])) {
+                        $redirect = $_SESSION['redirect_after_login'];
+                        unset($_SESSION['redirect_after_login']);
+                        redirect($redirect);
+                    } else {
+                        redirect(url());
+                    }
                 } else {
                     // Incrémentation du compteur de tentatives
                     $this->incrementLoginAttempts($ipAddress);
@@ -338,5 +366,131 @@ class AuthController {
         }
 
         return $_SESSION['login_attempts'][$ip]['time'];
+    }
+
+    /**
+     * Vérifie et répare les relations utilisateur-étudiant manquantes
+     * Utilisé pour diagnostiquer et corriger les problèmes d'intégrité
+     */
+    public function repairUserStudentRelations() {
+        // Vérification des droits d'accès
+        if (!isAdmin()) {
+            redirect(url());
+            return;
+        }
+
+        require_once MODELS_PATH . '/Etudiant.php';
+        $etudiantModel = new Etudiant();
+        $result = $etudiantModel->verifyAndRepairUserStudentRelations();
+
+        if ($result['status'] === 'success') {
+            $_SESSION['flash_message'] = [
+                'type' => 'success',
+                'message' => "Réparation terminée. {$result['repairs']} profils étudiants créés."
+            ];
+        } else {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur lors de la réparation : {$result['message']}"
+            ];
+        }
+
+        // Log des résultats
+        error_log("[AUTH][REPAIR] Réparation des relations utilisateur-étudiant : " . json_encode($result));
+
+        // Redirection vers le tableau de bord admin
+        redirect(url('admin'));
+    }
+
+    /**
+     * Mot de passe oublié - Affichage du formulaire
+     * (Fonctionnalité non implémentée)
+     */
+    public function forgotPassword() {
+        $errors = [];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $email = cleanData($_POST['email'] ?? '');
+
+            if (empty($email)) {
+                $errors[] = "L'email est obligatoire";
+            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Format d'email invalide";
+            } else {
+                // Fonctionnalité non implémentée, mais message utilisateur optimiste
+                $_SESSION['flash_message'] = [
+                    'type' => 'info',
+                    'message' => "Si votre email existe dans notre système, vous recevrez un lien pour réinitialiser votre mot de passe."
+                ];
+                redirect(url('auth', 'login'));
+            }
+        }
+
+        include VIEWS_PATH . '/auth/forgot_password.php';
+    }
+
+    /**
+     * Diagnostique l'état de l'authentification
+     * Utile pour déboguer les problèmes de session
+     */
+    public function diagnose() {
+        // Restreint à l'administrateur et au mode développement
+        if (ENVIRONMENT !== 'development' && (!isLoggedIn() || !isAdmin())) {
+            redirect(url());
+            return;
+        }
+
+        $diagnosticData = [
+            'session_active' => session_status() === PHP_SESSION_ACTIVE,
+            'session_id' => session_id(),
+            'session_data' => $_SESSION,
+            'login_attempts' => $_SESSION['login_attempts'] ?? [],
+            'server' => [
+                'remote_addr' => $_SERVER['REMOTE_ADDR'],
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                'request_time' => date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']),
+                'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+                'php_version' => PHP_VERSION
+            ]
+        ];
+
+        // Si l'utilisateur est connecté, récupérer les infos de la base de données
+        if (isLoggedIn()) {
+            $userId = $_SESSION['user_id'];
+            $userData = $this->authModel->getUserById($userId);
+
+            if ($userData) {
+                $diagnosticData['user_db'] = [
+                    'id' => $userData['id'],
+                    'email' => $userData['email'],
+                    'role' => $userData['role'],
+                    'created_at' => $userData['created_at']
+                ];
+
+                // Chercher le profil étudiant si rôle = étudiant
+                if ($userData['role'] === ROLE_ETUDIANT) {
+                    require_once MODELS_PATH . '/Etudiant.php';
+                    $etudiantModel = new Etudiant();
+                    $etudiant = $etudiantModel->getByUserId($userId);
+
+                    if ($etudiant) {
+                        $diagnosticData['etudiant_db'] = [
+                            'id' => $etudiant['id'],
+                            'nom' => $etudiant['nom'],
+                            'prenom' => $etudiant['prenom']
+                        ];
+                    } else {
+                        $diagnosticData['etudiant_db'] = 'Profil étudiant non trouvé';
+                    }
+                }
+            } else {
+                $diagnosticData['user_db'] = 'Utilisateur non trouvé en base de données';
+            }
+        }
+
+        // Affichage des données de diagnostic
+        header('Content-Type: application/json');
+        echo json_encode($diagnosticData, JSON_PRETTY_PRINT);
+        exit;
     }
 }
