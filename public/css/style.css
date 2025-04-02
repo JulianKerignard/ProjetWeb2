@@ -162,7 +162,7 @@ img {
 }
 
 .navbar-nav .nav-link:hover {
-    color: var(--primary) !important;
+    color: white !important;
     background-color: rgba(37, 99, 235, 0.05);
 }
 
