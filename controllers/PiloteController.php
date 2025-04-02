@@ -9,6 +9,8 @@
  */
 class PiloteController {
     private $piloteModel;
+    private $centreModel;
+    private $logManager;
 
     /**
      * Constructeur - Initialise les modèles nécessaires avec vérification des droits
@@ -17,6 +19,14 @@ class PiloteController {
         // Chargement du modèle Pilote
         require_once MODELS_PATH . '/Pilote.php';
         $this->piloteModel = new Pilote();
+
+        // Chargement du modèle Centre pour les sélections de centres
+        require_once MODELS_PATH . '/Centre.php';
+        $this->centreModel = new Centre();
+
+        // Chargement du gestionnaire de logs
+        require_once ROOT_PATH . '/includes/LogManager.php';
+        $this->logManager = LogManager::getInstance();
 
         // Vérification d'authentification pour toutes les actions sauf index
         $publicActions = ['index'];
@@ -63,6 +73,13 @@ class PiloteController {
             $filters['email'] = cleanData($_GET['email']);
         }
 
+        if (isset($_GET['centre_id']) && !empty($_GET['centre_id'])) {
+            $filters['centre_id'] = (int)$_GET['centre_id'];
+        }
+
+        // Récupération des centres pour le filtre
+        $centres = $this->centreModel->getAllForSelect();
+
         // Récupération des pilotes paginés
         $pilotes = $this->piloteModel->getAll($page, ITEMS_PER_PAGE, $filters);
 
@@ -85,8 +102,12 @@ class PiloteController {
             'nom' => '',
             'prenom' => '',
             'email' => '',
-            'password' => ''
+            'password' => '',
+            'centre_id' => ''
         ];
+
+        // Récupération des centres pour le select
+        $centres = $this->centreModel->getAllForSelect();
 
         $errors = [];
         $success = false;
@@ -98,7 +119,8 @@ class PiloteController {
                 'nom' => isset($_POST['nom']) ? cleanData($_POST['nom']) : '',
                 'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
                 'email' => isset($_POST['email']) ? cleanData($_POST['email']) : '',
-                'password' => isset($_POST['password']) ? $_POST['password'] : ''
+                'password' => isset($_POST['password']) ? $_POST['password'] : '',
+                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : null
             ];
 
             // Validation des données
@@ -109,6 +131,17 @@ class PiloteController {
                 $result = $this->piloteModel->create($pilote);
 
                 if ($result) {
+                    // Journalisation
+                    $this->logManager->success(
+                        "Création d'un pilote",
+                        $_SESSION['email'],
+                        [
+                            'pilote_id' => $result,
+                            'pilote_nom' => $pilote['nom'],
+                            'pilote_centre_id' => $pilote['centre_id']
+                        ]
+                    );
+
                     // Redirection vers la liste avec message de succès
                     $_SESSION['flash_message'] = [
                         'type' => 'success',
@@ -117,6 +150,16 @@ class PiloteController {
                     redirect(url('pilotes'));
                 } else {
                     $errors[] = "Une erreur est survenue lors de la création du pilote.";
+
+                    // Journalisation
+                    $this->logManager->error(
+                        "Échec de création d'un pilote",
+                        $_SESSION['email'],
+                        [
+                            'pilote_nom' => $pilote['nom'],
+                            'pilote_email' => $pilote['email']
+                        ]
+                    );
                 }
             }
         }
@@ -148,6 +191,9 @@ class PiloteController {
             redirect(url('pilotes'));
         }
 
+        // Récupération des centres pour le select
+        $centres = $this->centreModel->getAllForSelect();
+
         $errors = [];
         $success = false;
 
@@ -158,7 +204,8 @@ class PiloteController {
                 'nom' => isset($_POST['nom']) ? cleanData($_POST['nom']) : '',
                 'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
                 'email' => isset($_POST['email']) ? cleanData($_POST['email']) : '',
-                'password' => isset($_POST['password']) ? $_POST['password'] : ''
+                'password' => isset($_POST['password']) ? $_POST['password'] : '',
+                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : null
             ];
 
             // Validation des données
@@ -170,10 +217,32 @@ class PiloteController {
 
                 if ($result) {
                     $success = true;
+
+                    // Journalisation
+                    $this->logManager->success(
+                        "Modification d'un pilote",
+                        $_SESSION['email'],
+                        [
+                            'pilote_id' => $id,
+                            'pilote_nom' => $updatedPilote['nom'],
+                            'pilote_centre_id' => $updatedPilote['centre_id']
+                        ]
+                    );
+
                     // Rafraîchissement des données du pilote
                     $pilote = $this->piloteModel->getById($id);
                 } else {
                     $errors[] = "Une erreur est survenue lors de la mise à jour du pilote.";
+
+                    // Journalisation
+                    $this->logManager->error(
+                        "Échec de modification d'un pilote",
+                        $_SESSION['email'],
+                        [
+                            'pilote_id' => $id,
+                            'pilote_nom' => $updatedPilote['nom']
+                        ]
+                    );
                 }
             }
         }
@@ -210,12 +279,33 @@ class PiloteController {
             $result = $this->piloteModel->delete($id);
 
             if ($result) {
+                // Journalisation
+                $this->logManager->success(
+                    "Suppression d'un pilote",
+                    $_SESSION['email'],
+                    [
+                        'pilote_id' => $id,
+                        'pilote_nom' => $pilote['nom'],
+                        'pilote_prenom' => $pilote['prenom']
+                    ]
+                );
+
                 // Redirection vers la liste avec message de succès
                 $_SESSION['flash_message'] = [
                     'type' => 'success',
                     'message' => "Le pilote a été supprimé avec succès."
                 ];
             } else {
+                // Journalisation
+                $this->logManager->error(
+                    "Échec de suppression d'un pilote",
+                    $_SESSION['email'],
+                    [
+                        'pilote_id' => $id,
+                        'pilote_nom' => $pilote['nom']
+                    ]
+                );
+
                 // Redirection vers la liste avec message d'erreur
                 $_SESSION['flash_message'] = [
                     'type' => 'danger',
@@ -252,6 +342,16 @@ class PiloteController {
             // Redirection vers la liste si pilote non trouvé
             redirect(url('pilotes'));
         }
+
+        // Journalisation
+        $this->logManager->info(
+            "Consultation des détails d'un pilote",
+            $_SESSION['email'],
+            [
+                'pilote_id' => $id,
+                'pilote_nom' => $pilote['nom']
+            ]
+        );
 
         // Définir le titre de la page
         $pageTitle = "Détail du pilote: " . $pilote['prenom'] . ' ' . $pilote['nom'];
@@ -292,6 +392,27 @@ class PiloteController {
             );
 
             // Redirection vers la liste si pilote non trouvé
+            redirect(url('pilotes'));
+        }
+
+        // Vérification des droits d'accès pour les pilotes
+        if (!isAdmin() && isPilote() && $_SESSION['user_id'] != $pilote['user_id']) {
+            // Journalisation
+            $this->logManager->warning(
+                "Tentative d'accès non autorisé aux étudiants d'un autre pilote",
+                $_SESSION['email'],
+                [
+                    'pilote_id' => $id,
+                    'pilote_nom' => $pilote['nom']
+                ]
+            );
+
+            // Redirection avec message d'erreur
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Vous n'avez pas l'autorisation d'accéder aux étudiants de ce pilote."
+            ];
+
             redirect(url('pilotes'));
         }
 
@@ -359,12 +480,8 @@ class PiloteController {
         $etudiantsAssignes = $this->piloteModel->getEtudiantsAssignes($id);
         $etudiantsAssignesIds = array_column($etudiantsAssignes, 'id');
 
-        // Charger le modèle étudiant pour récupérer tous les étudiants
-        require_once MODELS_PATH . '/Etudiant.php';
-        $etudiantModel = new Etudiant();
-
-        // Récupération de tous les étudiants (pour le select)
-        $tousLesEtudiants = $etudiantModel->getAll(1, 1000); // Limite élevée pour récupérer tous les étudiants
+        // Récupération de tous les étudiants disponibles (du même centre que le pilote)
+        $tousLesEtudiants = $this->piloteModel->getEtudiantsDisponibles($id);
 
         $errors = [];
         $success = false;
@@ -383,15 +500,25 @@ class PiloteController {
 
                 // Ajouter les nouvelles attributions
                 $success = true;
+                $errorCount = 0;
+                $invalidCentre = 0;
+
                 foreach ($etudiantIds as $etudiantId) {
                     $result = $this->piloteModel->assignerEtudiant($id, $etudiantId);
-                    if (!$result) {
+                    if ($result === 'not_same_centre') {
+                        $invalidCentre++;
+                    } else if (!$result) {
+                        $errorCount++;
                         $success = false;
                         $errors[] = "Erreur lors de l'attribution de l'étudiant #" . $etudiantId;
                     }
                 }
 
-                if ($success) {
+                if ($invalidCentre > 0) {
+                    $errors[] = "{$invalidCentre} étudiant(s) n'ont pas pu être attribués car ils appartiennent à un centre différent du pilote.";
+                }
+
+                if ($success && $errorCount == 0) {
                     // Journalisation du succès
                     $this->logManager->success(
                         "Attribution d'étudiants à un pilote",
@@ -406,7 +533,8 @@ class PiloteController {
                     // Message de succès
                     $_SESSION['flash_message'] = [
                         'type' => 'success',
-                        'message' => "Les étudiants ont été attribués avec succès."
+                        'message' => "Les étudiants ont été attribués avec succès." .
+                            ($invalidCentre > 0 ? " ({$invalidCentre} avec centre incompatible ignorés)" : "")
                     ];
 
                     // Redirection vers la liste des étudiants du pilote
@@ -550,6 +678,19 @@ class PiloteController {
                 $errors[] = "Le mot de passe est obligatoire.";
             } elseif (strlen($data['password']) < 6) {
                 $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
+            }
+        }
+
+        // Validation du centre (optionnel)
+        if (isset($data['centre_id']) && !empty($data['centre_id'])) {
+            if (!is_numeric($data['centre_id'])) {
+                $errors[] = "Le centre sélectionné n'est pas valide.";
+            } else {
+                // Vérifier que le centre existe
+                $centre = $this->centreModel->getById($data['centre_id']);
+                if (!$centre) {
+                    $errors[] = "Le centre sélectionné n'existe pas.";
+                }
             }
         }
 

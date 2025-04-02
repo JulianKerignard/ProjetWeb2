@@ -48,6 +48,18 @@ include ROOT_PATH . '/views/templates/header.php';
                             </div>
                         </div>
 
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <p><strong><i class="fas fa-building me-2"></i>Centre:</strong>
+                                    <?php if (!empty($pilote['centre_nom'])): ?>
+                                        <?php echo htmlspecialchars($pilote['centre_nom']); ?> (<?php echo htmlspecialchars($pilote['centre_code']); ?>)
+                                    <?php else: ?>
+                                        <span class="text-muted">Non assigné</span>
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- Actions -->
                         <div class="d-flex justify-content-between mt-4">
                             <a href="<?php echo url('pilotes'); ?>" class="btn btn-outline-secondary">
@@ -55,6 +67,10 @@ include ROOT_PATH . '/views/templates/header.php';
                             </a>
 
                             <div>
+                                <a href="<?php echo url('pilotes', 'etudiants', ['id' => $pilote['id']]); ?>" class="btn btn-outline-info me-2">
+                                    <i class="fas fa-user-graduate me-1"></i>Étudiants assignés
+                                </a>
+
                                 <?php if (isAdmin()): ?>
                                     <a href="<?php echo url('pilotes', 'modifier', ['id' => $pilote['id']]); ?>" class="btn btn-outline-secondary me-2">
                                         <i class="fas fa-edit me-2"></i>Modifier

@@ -76,9 +76,10 @@ class Pilote {
             $offset = ($page - 1) * $limit;
 
             // Préparation de la requête SQL de base optimisée
-            $query = "SELECT p.*, u.email, u.role
+            $query = "SELECT p.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code
                      FROM {$this->table} p
-                     LEFT JOIN {$this->usersTable} u ON p.user_id = u.id";
+                     LEFT JOIN {$this->usersTable} u ON p.user_id = u.id
+                     LEFT JOIN centres c ON p.centre_id = c.id";
 
             // Construction des clauses WHERE selon les filtres
             $whereConditions = [];
@@ -97,6 +98,11 @@ class Pilote {
             if (!empty($filters['email'])) {
                 $whereConditions[] = "u.email LIKE :email";
                 $params[':email'] = '%' . $filters['email'] . '%';
+            }
+
+            if (!empty($filters['centre_id'])) {
+                $whereConditions[] = "p.centre_id = :centre_id";
+                $params[':centre_id'] = $filters['centre_id'];
             }
 
             // Ajout des conditions WHERE si présentes
@@ -135,6 +141,9 @@ class Pilote {
                     'prenom' => $row['prenom'],
                     'email' => $row['email'],
                     'role' => $row['role'],
+                    'centre_id' => $row['centre_id'],
+                    'centre_nom' => $row['centre_nom'],
+                    'centre_code' => $row['centre_code'],
                     'created_at' => $row['created_at'],
                     'updated_at' => $row['updated_at']
                 ];
@@ -184,6 +193,11 @@ class Pilote {
                 $params[':email'] = '%' . $filters['email'] . '%';
             }
 
+            if (!empty($filters['centre_id'])) {
+                $whereConditions[] = "p.centre_id = :centre_id";
+                $params[':centre_id'] = $filters['centre_id'];
+            }
+
             // Ajout des conditions WHERE si présentes
             if (!empty($whereConditions)) {
                 $query .= " WHERE " . implode(' AND ', $whereConditions);
@@ -222,9 +236,10 @@ class Pilote {
 
         try {
             // Requête optimisée
-            $query = "SELECT p.*, u.email, u.role
+            $query = "SELECT p.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code
                      FROM {$this->table} p
                      LEFT JOIN {$this->usersTable} u ON p.user_id = u.id
+                     LEFT JOIN centres c ON p.centre_id = c.id
                      WHERE p.id = :id";
 
             $stmt = $this->conn->prepare($query);
@@ -243,6 +258,9 @@ class Pilote {
                 'prenom' => $row['prenom'],
                 'email' => $row['email'],
                 'role' => $row['role'],
+                'centre_id' => $row['centre_id'],
+                'centre_nom' => $row['centre_nom'],
+                'centre_code' => $row['centre_code'],
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at']
             ];
@@ -285,13 +303,20 @@ class Pilote {
             $userId = $this->conn->lastInsertId();
 
             // 2. Création du profil pilote
-            $piloteQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, created_at)
-                           VALUES (:user_id, :nom, :prenom, NOW())";
+            $piloteQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, centre_id, created_at)
+                           VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
 
             $piloteStmt = $this->conn->prepare($piloteQuery);
             $piloteStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $piloteStmt->bindParam(':nom', $data['nom']);
             $piloteStmt->bindParam(':prenom', $data['prenom']);
+
+            // Gestion du centre (peut être NULL)
+            if (!empty($data['centre_id'])) {
+                $piloteStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
+            } else {
+                $piloteStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            }
 
             $piloteStmt->execute();
             $piloteId = $this->conn->lastInsertId();
@@ -342,6 +367,7 @@ class Pilote {
             $piloteQuery = "UPDATE {$this->table} SET
                            nom = :nom,
                            prenom = :prenom,
+                           centre_id = :centre_id,
                            updated_at = NOW()
                            WHERE id = :id";
 
@@ -349,6 +375,13 @@ class Pilote {
             $piloteStmt->bindParam(':nom', $data['nom']);
             $piloteStmt->bindParam(':prenom', $data['prenom']);
             $piloteStmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+            // Gestion du centre (peut être NULL)
+            if (!empty($data['centre_id'])) {
+                $piloteStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
+            } else {
+                $piloteStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            }
 
             $piloteStmt->execute();
 
@@ -395,6 +428,37 @@ class Pilote {
     }
 
     /**
+     * Met à jour le centre d'un pilote
+     *
+     * @param int $piloteId ID du pilote
+     * @param int|null $centreId ID du centre (null pour supprimer l'association)
+     * @return bool
+     */
+    public function updateCentre($piloteId, $centreId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "UPDATE {$this->table} SET centre_id = :centre_id WHERE id = :pilote_id";
+            $stmt = $this->conn->prepare($query);
+
+            if ($centreId === null) {
+                $stmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindParam(':centre_id', $centreId, PDO::PARAM_INT);
+            }
+
+            $stmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la mise à jour du centre du pilote: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Récupère les étudiants assignés à un pilote
      *
      * @param int $piloteId ID du pilote
@@ -407,16 +471,32 @@ class Pilote {
         }
 
         try {
+            // Récupération du centre du pilote
+            $pilote = $this->getById($piloteId);
+            $centrePilote = $pilote['centre_id'];
+
+            // Base de la requête
             $query = "SELECT e.*, u.email, c.nom as centre_nom, c.code as centre_code, pe.date_attribution
                   FROM etudiants e
                   JOIN pilote_etudiant pe ON e.id = pe.etudiant_id
                   JOIN utilisateurs u ON e.user_id = u.id
                   LEFT JOIN centres c ON e.centre_id = c.id
-                  WHERE pe.pilote_id = :pilote_id
-                  ORDER BY e.nom, e.prenom";
+                  WHERE pe.pilote_id = :pilote_id";
+
+            // Si le pilote est assigné à un centre, ne montrer que les étudiants de ce centre
+            if ($centrePilote) {
+                $query .= " AND e.centre_id = :centre_id";
+            }
+
+            $query .= " ORDER BY e.nom, e.prenom";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
+
+            if ($centrePilote) {
+                $stmt->bindParam(':centre_id', $centrePilote, PDO::PARAM_INT);
+            }
+
             $stmt->execute();
 
             $etudiants = [];
@@ -441,11 +521,11 @@ class Pilote {
     }
 
     /**
-     * Attribue un étudiant à un pilote
+     * Attribue un étudiant à un pilote s'ils font partie du même centre
      *
      * @param int $piloteId ID du pilote
      * @param int $etudiantId ID de l'étudiant
-     * @return bool
+     * @return bool|string 'not_same_centre' si les centres ne correspondent pas
      */
     public function assignerEtudiant($piloteId, $etudiantId) {
         // Mode dégradé - retourne false
@@ -454,6 +534,26 @@ class Pilote {
         }
 
         try {
+            // Vérifier si l'étudiant et le pilote sont du même centre
+            $pilote = $this->getById($piloteId);
+
+            // Si le pilote est affecté à un centre, vérifier que l'étudiant est du même centre
+            if ($pilote['centre_id']) {
+                $etudiantQuery = "SELECT centre_id FROM etudiants WHERE id = :etudiant_id";
+                $etudiantStmt = $this->conn->prepare($etudiantQuery);
+                $etudiantStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+                $etudiantStmt->execute();
+
+                if ($etudiantStmt->rowCount() > 0) {
+                    $etudiant = $etudiantStmt->fetch(PDO::FETCH_ASSOC);
+
+                    // Si l'étudiant a un centre défini et différent de celui du pilote
+                    if ($etudiant['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
+                        return 'not_same_centre';
+                    }
+                }
+            }
+
             // Vérifier si l'attribution existe déjà
             $checkQuery = "SELECT COUNT(*) as count FROM pilote_etudiant 
                        WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
@@ -542,13 +642,19 @@ class Pilote {
             // Début de la transaction
             $this->conn->beginTransaction();
 
-            // 1. Suppression du profil pilote
+            // 1. Suppression des attributions étudiant-pilote
+            $attrQuery = "DELETE FROM pilote_etudiant WHERE pilote_id = :pilote_id";
+            $attrStmt = $this->conn->prepare($attrQuery);
+            $attrStmt->bindParam(':pilote_id', $id, PDO::PARAM_INT);
+            $attrStmt->execute();
+
+            // 2. Suppression du profil pilote
             $piloteQuery = "DELETE FROM {$this->table} WHERE id = :id";
             $piloteStmt = $this->conn->prepare($piloteQuery);
             $piloteStmt->bindParam(':id', $id, PDO::PARAM_INT);
             $piloteStmt->execute();
 
-            // 2. Suppression du compte utilisateur
+            // 3. Suppression du compte utilisateur
             $userQuery = "DELETE FROM {$this->usersTable} WHERE id = :id";
             $userStmt = $this->conn->prepare($userQuery);
             $userStmt->bindParam(':id', $userId, PDO::PARAM_INT);
@@ -579,9 +685,10 @@ class Pilote {
         }
 
         try {
-            $query = "SELECT p.id, p.nom, p.prenom, p.created_at, u.email
+            $query = "SELECT p.id, p.nom, p.prenom, p.created_at, u.email, c.nom as centre_nom
                       FROM {$this->table} p
                       LEFT JOIN {$this->usersTable} u ON p.user_id = u.id
+                      LEFT JOIN centres c ON p.centre_id = c.id
                       ORDER BY p.created_at DESC
                       LIMIT :limit";
 
@@ -597,6 +704,57 @@ class Pilote {
             return $pilotes;
         } catch (PDOException $e) {
             error_log("Erreur lors de la récupération des derniers pilotes: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Récupère les étudiants disponibles pour un pilote (du même centre)
+     *
+     * @param int $piloteId ID du pilote
+     * @param int $limit Nombre maximum d'étudiants à récupérer
+     * @return array
+     */
+    public function getEtudiantsDisponibles($piloteId, $limit = 1000) {
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
+            return [];
+        }
+
+        try {
+            // Récupérer le centre du pilote
+            $pilote = $this->getById($piloteId);
+            if (!$pilote) {
+                return [];
+            }
+
+            $centrePilote = $pilote['centre_id'];
+
+            // Base de la requête pour obtenir tous les étudiants
+            $query = "SELECT e.id, e.nom, e.prenom, u.email, c.nom as centre_nom
+                      FROM etudiants e
+                      JOIN utilisateurs u ON e.user_id = u.id
+                      LEFT JOIN centres c ON e.centre_id = c.id";
+
+            // Si le pilote est assigné à un centre, ne montrer que les étudiants de ce centre
+            if ($centrePilote) {
+                $query .= " WHERE e.centre_id = :centre_id OR e.centre_id IS NULL";
+            }
+
+            $query .= " ORDER BY e.nom, e.prenom LIMIT :limit";
+
+            $stmt = $this->conn->prepare($query);
+
+            if ($centrePilote) {
+                $stmt->bindParam(':centre_id', $centrePilote, PDO::PARAM_INT);
+            }
+
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération des étudiants disponibles: " . $e->getMessage());
             return [];
         }
     }

@@ -40,7 +40,7 @@ include ROOT_PATH . '/views/templates/header.php';
                         <input type="hidden" name="action" value="rechercher">
 
                         <!-- Filtre par nom -->
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="nom" class="form-label">Nom</label>
                             <input type="text" class="form-control" id="nom" name="nom"
                                    value="<?php echo isset($filters['nom']) ? htmlspecialchars($filters['nom']) : ''; ?>"
@@ -48,7 +48,7 @@ include ROOT_PATH . '/views/templates/header.php';
                         </div>
 
                         <!-- Filtre par prénom -->
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="prenom" class="form-label">Prénom</label>
                             <input type="text" class="form-control" id="prenom" name="prenom"
                                    value="<?php echo isset($filters['prenom']) ? htmlspecialchars($filters['prenom']) : ''; ?>"
@@ -56,11 +56,24 @@ include ROOT_PATH . '/views/templates/header.php';
                         </div>
 
                         <!-- Filtre par email -->
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="text" class="form-control" id="email" name="email"
                                    value="<?php echo isset($filters['email']) ? htmlspecialchars($filters['email']) : ''; ?>"
                                    placeholder="Email du pilote">
+                        </div>
+
+                        <!-- Filtre par centre -->
+                        <div class="col-md-3">
+                            <label for="centre_id" class="form-label">Centre</label>
+                            <select class="form-select" id="centre_id" name="centre_id">
+                                <option value="">Tous les centres</option>
+                                <?php foreach ($centres as $centre): ?>
+                                    <option value="<?php echo $centre['id']; ?>" <?php echo (isset($filters['centre_id']) && $filters['centre_id'] == $centre['id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($centre['nom']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
 
                         <!-- Boutons d'action -->
@@ -98,6 +111,7 @@ include ROOT_PATH . '/views/templates/header.php';
                                 <th>Nom</th>
                                 <th>Prénom</th>
                                 <th>Email</th>
+                                <th>Centre</th>
                                 <th>Date de création</th>
                                 <th class="text-end">Actions</th>
                             </tr>
@@ -108,11 +122,21 @@ include ROOT_PATH . '/views/templates/header.php';
                                     <td><?php echo htmlspecialchars($pilote['nom']); ?></td>
                                     <td><?php echo htmlspecialchars($pilote['prenom']); ?></td>
                                     <td><?php echo htmlspecialchars($pilote['email']); ?></td>
+                                    <td>
+                                        <?php if (!empty($pilote['centre_nom'])): ?>
+                                            <?php echo htmlspecialchars($pilote['centre_nom']); ?> (<?php echo htmlspecialchars($pilote['centre_code']); ?>)
+                                        <?php else: ?>
+                                            <span class="text-muted">Non assigné</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo (new DateTime($pilote['created_at']))->format('d/m/Y H:i'); ?></td>
                                     <td class="text-end">
                                         <div class="btn-group">
                                             <a href="<?php echo url('pilotes', 'detail', ['id' => $pilote['id']]); ?>" class="btn btn-sm btn-outline-primary" title="Détails">
                                                 <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="<?php echo url('pilotes', 'etudiants', ['id' => $pilote['id']]); ?>" class="btn btn-sm btn-outline-info" title="Étudiants assignés">
+                                                <i class="fas fa-user-graduate"></i>
                                             </a>
                                             <?php if (isAdmin()): ?>
                                                 <a href="<?php echo url('pilotes', 'modifier', ['id' => $pilote['id']]); ?>" class="btn btn-sm btn-outline-secondary" title="Modifier">
@@ -150,6 +174,7 @@ include ROOT_PATH . '/views/templates/header.php';
                 document.getElementById('nom').value = '';
                 document.getElementById('prenom').value = '';
                 document.getElementById('email').value = '';
+                document.getElementById('centre_id').value = '';
 
                 // Soumettre le formulaire
                 document.getElementById('filter-form').submit();
