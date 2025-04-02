@@ -57,6 +57,13 @@ class Candidature {
 
             // Initialisation du chemin d'upload
             $this->uploadDir = defined('UPLOAD_DIR') ? UPLOAD_DIR : ROOT_PATH . '/public/uploads/';
+
+            // Vérification du dossier d'upload
+            if (!file_exists($this->uploadDir)) {
+                if (!mkdir($this->uploadDir, 0755, true)) {
+                    error_log("Erreur: Impossible de créer le répertoire d'upload: " . $this->uploadDir);
+                }
+            }
         } catch (Exception $e) {
             $this->dbError = true;
             error_log("Exception dans Candidature::__construct(): " . $e->getMessage());
@@ -304,23 +311,23 @@ class Candidature {
         }
     }
 
-    /**
-     * Ajoute une candidature
-     *
-     * @param array $data Données de la candidature
-     * @param array $files Fichiers uploadés
-     * @return int|false ID de la candidature créée ou false en cas d'échec
-     */
     public function create($data, $files = null) {
+        // Inclusion du fichier de journalisation
+        require_once ROOT_PATH . '/upload_log.php';
+
         // Mode dégradé - retourne false
         if ($this->dbError) {
+            log_upload("Mode dégradé activé - connexion BDD absente", "ERROR");
             return false;
         }
 
         try {
+            // Log des données d'entrée (sans les données sensibles)
+            log_upload("Tentative de création de candidature - offre_id: {$data['offre_id']}, etudiant_id: {$data['etudiant_id']}");
+
             // Vérification si l'étudiant a déjà postulé à cette offre
             $checkQuery = "SELECT COUNT(*) as count FROM {$this->table} 
-                          WHERE etudiant_id = :etudiant_id AND offre_id = :offre_id";
+                      WHERE etudiant_id = :etudiant_id AND offre_id = :offre_id";
 
             $checkStmt = $this->conn->prepare($checkQuery);
             $checkStmt->bindParam(':etudiant_id', $data['etudiant_id'], PDO::PARAM_INT);
@@ -329,43 +336,64 @@ class Candidature {
 
             $row = $checkStmt->fetch(PDO::FETCH_ASSOC);
             if ($row['count'] > 0) {
-                // L'étudiant a déjà posé sa candidature
+                log_upload("L'étudiant {$data['etudiant_id']} a déjà postulé à l'offre {$data['offre_id']}", "WARNING");
                 return false;
             }
 
             // Gérer l'upload du CV si présent
             $cvFilename = '';
             if (!empty($files['cv']) && $files['cv']['error'] === UPLOAD_ERR_OK) {
+                log_upload("Fichier CV reçu - name: {$files['cv']['name']}, size: {$files['cv']['size']}, type: {$files['cv']['type']}");
+
                 $cvFilename = $this->uploadFile($files['cv'], $data['etudiant_id']);
                 if (!$cvFilename) {
+                    log_upload("Échec de l'upload du fichier CV", "ERROR");
                     return false;
                 }
-            } else if (!empty($data['cv'])) {
-                // Si un nom de fichier est fourni directement (chemin existant)
-                $cvFilename = $data['cv'];
+                log_upload("Fichier CV uploadé avec succès: {$cvFilename}");
+            } else if (!empty($files['cv'])) {
+                log_upload("Erreur avec le fichier CV - code erreur: {$files['cv']['error']}", "ERROR");
+                return false;
+            } else {
+                log_upload("Aucun fichier CV fourni", "ERROR");
+                return false;
             }
 
-            // Ajout de la candidature
-            $query = "INSERT INTO {$this->table} 
+            // Insertion en base de données
+            try {
+                log_upload("Tentative d'insertion en base de données");
+
+                $query = "INSERT INTO {$this->table} 
                       (offre_id, etudiant_id, cv, lettre_motivation, date_candidature)
                       VALUES (:offre_id, :etudiant_id, :cv, :lettre_motivation, NOW())";
 
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':offre_id', $data['offre_id'], PDO::PARAM_INT);
-            $stmt->bindParam(':etudiant_id', $data['etudiant_id'], PDO::PARAM_INT);
-            $stmt->bindParam(':cv', $cvFilename);
-            $stmt->bindParam(':lettre_motivation', $data['lettre_motivation']);
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(':offre_id', $data['offre_id'], PDO::PARAM_INT);
+                $stmt->bindParam(':etudiant_id', $data['etudiant_id'], PDO::PARAM_INT);
+                $stmt->bindParam(':cv', $cvFilename);
+                $stmt->bindParam(':lettre_motivation', $data['lettre_motivation']);
 
-            if ($stmt->execute()) {
+                $success = $stmt->execute();
+
+                if (!$success) {
+                    $errorInfo = $stmt->errorInfo();
+                    log_upload("Erreur SQL lors de l'insertion: " . print_r($errorInfo, true), "ERROR");
+                    return false;
+                }
+
+                $newId = $this->conn->lastInsertId();
+                log_upload("Candidature créée avec succès, ID: {$newId}", "SUCCESS");
+
                 // Supprimer l'offre de la wishlist si elle y était
                 $this->removeFromWishlist($data['etudiant_id'], $data['offre_id']);
 
-                return $this->conn->lastInsertId();
+                return $newId;
+            } catch (PDOException $e) {
+                log_upload("Exception PDO lors de l'insertion: " . $e->getMessage(), "ERROR");
+                return false;
             }
-
-            return false;
         } catch (PDOException $e) {
-            error_log("Erreur lors de la création de la candidature: " . $e->getMessage());
+            log_upload("Exception globale: " . $e->getMessage(), "ERROR");
             return false;
         }
     }
@@ -474,7 +502,7 @@ class Candidature {
      *
      * @param int $etudiantId ID de l'étudiant
      * @param int $offreId ID de l'offre
-     * @return bool
+     * @return bool|string 'already_exists' si déjà en wishlist, true si ajouté avec succès, false en cas d'erreur
      */
     public function addToWishlist($etudiantId, $offreId) {
         // Mode dégradé - retourne false
@@ -495,7 +523,7 @@ class Candidature {
             $row = $checkStmt->fetch(PDO::FETCH_ASSOC);
             if ($row['count'] > 0) {
                 // L'entrée existe déjà
-                return true;
+                return 'already_exists';
             }
 
             // Ajout à la wishlist
@@ -658,23 +686,35 @@ class Candidature {
         return $this->getAll(1, 1000, ['etudiant_id' => $etudiantId]);
     }
 
-    /**
-     * Gère l'upload d'un fichier
-     *
-     * @param array $file Données du fichier uploadé
-     * @param int $etudiantId ID de l'étudiant (pour le nommage)
-     * @return string|false Nom du fichier ou false en cas d'échec
-     */
     private function uploadFile($file, $etudiantId) {
-        // Vérification des extensions autorisées
-        $allowedExtensions = defined('ALLOWED_EXTENSIONS') ?
-            ALLOWED_EXTENSIONS : ['pdf', 'doc', 'docx'];
+        // Inclusion du fichier de journalisation
+        require_once ROOT_PATH . '/upload_log.php';
 
+        // Création du répertoire d'upload si nécessaire
+        if (!file_exists($this->uploadDir)) {
+            log_upload("Tentative de création du répertoire d'upload: {$this->uploadDir}");
+            if (!mkdir($this->uploadDir, 0755, true)) {
+                log_upload("Échec de création du répertoire d'upload", "ERROR");
+                return false;
+            }
+            log_upload("Répertoire d'upload créé avec succès");
+        }
+
+        // Vérification des permissions
+        if (!is_writable($this->uploadDir)) {
+            log_upload("Le répertoire d'upload n'est pas accessible en écriture: {$this->uploadDir}", "ERROR");
+            return false;
+        }
+
+        // Vérification des extensions autorisées
         $fileInfo = pathinfo($file['name']);
         $extension = strtolower($fileInfo['extension']);
+        $allowedExtensions = defined('ALLOWED_EXTENSIONS') ? ALLOWED_EXTENSIONS : ['pdf', 'doc', 'docx'];
+
+        log_upload("Vérification de l'extension: {$extension}");
 
         if (!in_array($extension, $allowedExtensions)) {
-            error_log("Extension de fichier non autorisée: {$extension}");
+            log_upload("Extension non autorisée: {$extension}", "ERROR");
             return false;
         }
 
@@ -682,24 +722,40 @@ class Candidature {
         $maxSize = defined('MAX_FILE_SIZE') ? MAX_FILE_SIZE : 5 * 1024 * 1024; // 5 Mo par défaut
 
         if ($file['size'] > $maxSize) {
-            error_log("Fichier trop volumineux: {$file['size']} octets");
+            log_upload("Fichier trop volumineux: {$file['size']} octets", "ERROR");
             return false;
         }
 
-        // Création du répertoire d'upload si nécessaire
-        if (!file_exists($this->uploadDir)) {
-            mkdir($this->uploadDir, 0755, true);
-        }
-
         // Génération d'un nom de fichier unique
-        $newFilename = 'cv_' . $etudiantId . '_' . time() . '.' . $extension;
+        $newFilename = 'cv_' . $etudiantId . '_' . time() . '_' . rand(1000, 9999) . '.' . $extension;
         $destination = $this->uploadDir . $newFilename;
 
+        log_upload("Tentative d'upload vers: {$destination}");
+
+        // Test d'écriture directe dans le répertoire
+        $testFile = $this->uploadDir . 'test_' . time() . '.txt';
+        if (!file_put_contents($testFile, 'test')) {
+            log_upload("Échec du test d'écriture dans le répertoire", "ERROR");
+        } else {
+            unlink($testFile);
+            log_upload("Test d'écriture réussi");
+        }
+
+        // Upload du fichier
         if (move_uploaded_file($file['tmp_name'], $destination)) {
+            log_upload("Fichier uploadé avec succès vers: {$destination}", "SUCCESS");
             return $newFilename;
         }
 
-        error_log("Erreur lors de l'upload du fichier vers {$destination}");
+        log_upload("Échec de l'upload avec move_uploaded_file()", "ERROR");
+
+        // Tentative alternative avec copy
+        if (copy($file['tmp_name'], $destination)) {
+            log_upload("Upload réussi avec copy()", "SUCCESS");
+            return $newFilename;
+        }
+
+        log_upload("Échec complet de l'upload", "ERROR");
         return false;
     }
 }
