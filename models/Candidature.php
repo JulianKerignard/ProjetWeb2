@@ -5,7 +5,7 @@
  * Implémente les opérations CRUD et les services spécifiques aux candidatures
  * avec optimisations des requêtes et gestion robuste des erreurs.
  *
- * @version 2.0
+ * @version 2.1
  * @author Web4All
  */
 class Candidature {
@@ -42,6 +42,11 @@ class Candidature {
             define('ROOT_PATH', realpath(dirname(__FILE__) . '/..'));
         }
 
+        // Vérifier si la fonction de log existe, sinon la créer
+        if (!function_exists('log_upload')) {
+            require_once ROOT_PATH . '/upload_log.php';
+        }
+
         // Utiliser le chemin absolu pour l'inclusion
         require_once ROOT_PATH . '/config/database.php';
 
@@ -53,6 +58,9 @@ class Candidature {
             if ($this->conn === null) {
                 $this->dbError = true;
                 error_log("Mode dégradé activé: Impossible d'établir la connexion à la base de données dans Candidature.php");
+                if (function_exists('log_upload')) {
+                    log_upload("Mode dégradé activé: Connexion BDD impossible", "ERROR");
+                }
             }
 
             // Initialisation du chemin d'upload
@@ -62,11 +70,17 @@ class Candidature {
             if (!file_exists($this->uploadDir)) {
                 if (!mkdir($this->uploadDir, 0755, true)) {
                     error_log("Erreur: Impossible de créer le répertoire d'upload: " . $this->uploadDir);
+                    if (function_exists('log_upload')) {
+                        log_upload("Erreur: Création du répertoire d'upload impossible: " . $this->uploadDir, "ERROR");
+                    }
                 }
             }
         } catch (Exception $e) {
             $this->dbError = true;
             error_log("Exception dans Candidature::__construct(): " . $e->getMessage());
+            if (function_exists('log_upload')) {
+                log_upload("Exception dans le constructeur: " . $e->getMessage(), "ERROR");
+            }
         }
     }
 
@@ -275,6 +289,7 @@ class Candidature {
         try {
             $query = "SELECT c.*, 
                      o.titre as offre_titre, o.description as offre_description, 
+                     o.date_debut, o.date_fin, o.remuneration,
                      e.id as entreprise_id, e.nom as entreprise_nom,
                      CONCAT(et.prenom, ' ', et.nom) as etudiant_nom
                      FROM {$this->table} c
@@ -292,6 +307,15 @@ class Candidature {
             }
 
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Préparation des données de l'offre pour l'affichage
+            $offre_description = [
+                'description' => $row['offre_description'],
+                'date_debut' => $row['date_debut'],
+                'date_fin' => $row['date_fin'],
+                'remuneration' => $row['remuneration']
+            ];
+
             return [
                 'id' => $row['id'],
                 'offre_id' => $row['offre_id'],
@@ -300,7 +324,7 @@ class Candidature {
                 'lettre_motivation' => $row['lettre_motivation'],
                 'date_candidature' => $row['date_candidature'],
                 'offre_titre' => $row['offre_titre'],
-                'offre_description' => $row['offre_description'],
+                'offre_description' => $offre_description,
                 'entreprise_id' => $row['entreprise_id'],
                 'entreprise_nom' => $row['entreprise_nom'],
                 'etudiant_nom' => $row['etudiant_nom']
@@ -311,9 +335,18 @@ class Candidature {
         }
     }
 
+    /**
+     * Crée une nouvelle candidature avec gestion améliorée des erreurs
+     *
+     * @param array $data Données de la candidature
+     * @param array $files Fichiers uploadés (CV)
+     * @return int|false ID de la candidature créée ou false en cas d'échec
+     */
     public function create($data, $files = null) {
-        // Inclusion du fichier de journalisation
-        require_once ROOT_PATH . '/upload_log.php';
+        // Vérification de la fonction de log
+        if (!function_exists('log_upload')) {
+            require_once ROOT_PATH . '/upload_log.php';
+        }
 
         // Mode dégradé - retourne false
         if ($this->dbError) {
@@ -324,6 +357,29 @@ class Candidature {
         try {
             // Log des données d'entrée (sans les données sensibles)
             log_upload("Tentative de création de candidature - offre_id: {$data['offre_id']}, etudiant_id: {$data['etudiant_id']}");
+
+            // Vérification que les IDs d'offre et d'étudiant existent bien
+            $checkOffreQuery = "SELECT COUNT(*) as count FROM {$this->offresTable} WHERE id = :id";
+            $checkOffreStmt = $this->conn->prepare($checkOffreQuery);
+            $checkOffreStmt->bindParam(':id', $data['offre_id'], PDO::PARAM_INT);
+            $checkOffreStmt->execute();
+            $offreExists = ($checkOffreStmt->fetch(PDO::FETCH_ASSOC)['count'] > 0);
+
+            $checkEtudiantQuery = "SELECT COUNT(*) as count FROM {$this->etudiantsTable} WHERE id = :id";
+            $checkEtudiantStmt = $this->conn->prepare($checkEtudiantQuery);
+            $checkEtudiantStmt->bindParam(':id', $data['etudiant_id'], PDO::PARAM_INT);
+            $checkEtudiantStmt->execute();
+            $etudiantExists = ($checkEtudiantStmt->fetch(PDO::FETCH_ASSOC)['count'] > 0);
+
+            if (!$offreExists) {
+                log_upload("L'offre avec l'ID {$data['offre_id']} n'existe pas", "ERROR");
+                return false;
+            }
+
+            if (!$etudiantExists) {
+                log_upload("L'étudiant avec l'ID {$data['etudiant_id']} n'existe pas", "ERROR");
+                return false;
+            }
 
             // Vérification si l'étudiant a déjà postulé à cette offre
             $checkQuery = "SELECT COUNT(*) as count FROM {$this->table} 
@@ -350,7 +406,7 @@ class Candidature {
                     log_upload("Échec de l'upload du fichier CV", "ERROR");
                     return false;
                 }
-                log_upload("Fichier CV uploadé avec succès: {$cvFilename}");
+                log_upload("Fichier CV uploadé avec succès: {$cvFilename}", "SUCCESS");
             } else if (!empty($files['cv'])) {
                 log_upload("Erreur avec le fichier CV - code erreur: {$files['cv']['error']}", "ERROR");
                 return false;
@@ -359,9 +415,10 @@ class Candidature {
                 return false;
             }
 
-            // Insertion en base de données
+            // Insertion en base de données avec transaction pour garantir l'intégrité
             try {
-                log_upload("Tentative d'insertion en base de données");
+                log_upload("Début de la transaction");
+                $this->conn->beginTransaction();
 
                 $query = "INSERT INTO {$this->table} 
                       (offre_id, etudiant_id, cv, lettre_motivation, date_candidature)
@@ -373,11 +430,15 @@ class Candidature {
                 $stmt->bindParam(':cv', $cvFilename);
                 $stmt->bindParam(':lettre_motivation', $data['lettre_motivation']);
 
+                log_upload("Exécution de la requête d'insertion: " . $query);
+                log_upload("Paramètres: offre_id={$data['offre_id']}, etudiant_id={$data['etudiant_id']}, cv={$cvFilename}");
+
                 $success = $stmt->execute();
 
                 if (!$success) {
                     $errorInfo = $stmt->errorInfo();
                     log_upload("Erreur SQL lors de l'insertion: " . print_r($errorInfo, true), "ERROR");
+                    $this->conn->rollBack();
                     return false;
                 }
 
@@ -387,12 +448,21 @@ class Candidature {
                 // Supprimer l'offre de la wishlist si elle y était
                 $this->removeFromWishlist($data['etudiant_id'], $data['offre_id']);
 
+                // Valider la transaction
+                $this->conn->commit();
+                log_upload("Transaction validée", "SUCCESS");
+
                 return $newId;
             } catch (PDOException $e) {
+                // Annuler la transaction en cas d'erreur
+                $this->conn->rollBack();
                 log_upload("Exception PDO lors de l'insertion: " . $e->getMessage(), "ERROR");
                 return false;
             }
         } catch (PDOException $e) {
+            log_upload("Exception PDO globale: " . $e->getMessage(), "ERROR");
+            return false;
+        } catch (Exception $e) {
             log_upload("Exception globale: " . $e->getMessage(), "ERROR");
             return false;
         }
@@ -686,9 +756,18 @@ class Candidature {
         return $this->getAll(1, 1000, ['etudiant_id' => $etudiantId]);
     }
 
+    /**
+     * Gère l'upload de fichier CV avec gestion améliorée des erreurs
+     *
+     * @param array $file Données du fichier uploadé
+     * @param int $etudiantId ID de l'étudiant
+     * @return string|false Nom du fichier uploadé ou false en cas d'échec
+     */
     private function uploadFile($file, $etudiantId) {
-        // Inclusion du fichier de journalisation
-        require_once ROOT_PATH . '/upload_log.php';
+        // Vérification de la fonction de log
+        if (!function_exists('log_upload')) {
+            require_once ROOT_PATH . '/upload_log.php';
+        }
 
         // Création du répertoire d'upload si nécessaire
         if (!file_exists($this->uploadDir)) {
