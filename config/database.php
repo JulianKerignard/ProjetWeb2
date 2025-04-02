@@ -5,9 +5,9 @@
 
 class Database {
     private $host = 'localhost';
-    private $db_name = 'test_bigdata_stage';
-    private $username = 'root';
-    private $password = '';
+    private $db_name = 'stages_db';
+    private $username = 'julian';
+    private $password = 'hM+8jfB8;9';
     private $conn = null;
 
     /**
