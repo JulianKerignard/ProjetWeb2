@@ -99,9 +99,31 @@ class OffreController {
         if (isLoggedIn() && $_SESSION['role'] === ROLE_ETUDIANT) {
             // Modèle de candidature pour vérifier la wishlist
             require_once MODELS_PATH . '/Candidature.php';
+            require_once MODELS_PATH . '/Etudiant.php';
             $candidatureModel = new Candidature();
+            $etudiantModel = new Etudiant();
 
-            $inWishlist = $candidatureModel->isInWishlist($_SESSION['user_id'], $id);
+            // Obtenir l'ID étudiant de manière fiable
+            $etudiantId = null;
+
+            // Utiliser l'ID étudiant de la session si disponible
+            if (isset($_SESSION['etudiant_id'])) {
+                $etudiantId = $_SESSION['etudiant_id'];
+            } else {
+                // Sinon, tenter de le récupérer depuis la base de données
+                $etudiantId = $etudiantModel->getEtudiantIdFromUserId($_SESSION['user_id']);
+
+                // Mettre en cache si trouvé
+                if ($etudiantId) {
+                    $_SESSION['etudiant_id'] = $etudiantId;
+                }
+            }
+
+            // Vérifier si l'offre est dans la wishlist
+            if ($etudiantId) {
+                $inWishlist = $candidatureModel->isInWishlist($etudiantId, $id);
+                error_log("TEST WISHLIST: Offre $id pour etudiant $etudiantId, résultat: " . ($inWishlist ? "est en favori" : "n'est pas en favori"));
+            }
         }
 
         // Définir le titre de la page

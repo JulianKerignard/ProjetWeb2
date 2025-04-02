@@ -7,6 +7,42 @@
  */
 include ROOT_PATH . '/views/templates/header.php';
 ?>
+    <!-- Styles spécifiques pour contraindre les dimensions des graphiques -->
+    <style>
+        /* Contraintes dimensionnelles pour tous les graphiques */
+        canvas.chart-canvas {
+            max-height: 300px !important;
+            height: 300px !important;
+            width: 100% !important;
+        }
+
+        /* Empêcher le débordement des conteneurs */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Assurer que les cartes contenant les stats ne débordent pas */
+        .card-body {
+            overflow: hidden;
+        }
+
+        /* Style optimisé pour les indicateurs statistiques */
+        .stat-item {
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            height: 100%;
+        }
+
+        /* Éviter les marges excessives qui pourraient contribuer à l'étirement */
+        .row {
+            margin-bottom: 20px;
+        }
+    </style>
 
     <div class="container mt-4">
         <!-- En-tête et actions -->
@@ -34,11 +70,15 @@ include ROOT_PATH . '/views/templates/header.php';
                         <div class="row">
                             <div class="col-md-6">
                                 <h6>Répartition par compétence</h6>
-                                <canvas id="skillsChart" height="300"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="skillsChart" class="chart-canvas"></canvas>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6>Répartition par durée</h6>
-                                <canvas id="durationChart" height="300"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="durationChart" class="chart-canvas"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -85,7 +125,9 @@ include ROOT_PATH . '/views/templates/header.php';
                         <div class="row">
                             <div class="col-12">
                                 <h6>Évolution des candidatures par mois</h6>
-                                <canvas id="applicationsChart" height="200"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="applicationsChart" class="chart-canvas"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -104,11 +146,15 @@ include ROOT_PATH . '/views/templates/header.php';
                         <div class="row">
                             <div class="col-md-6">
                                 <h6>Top 10 entreprises par nombre d'offres</h6>
-                                <canvas id="companiesChart" height="300"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="companiesChart" class="chart-canvas"></canvas>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6>Évaluations des entreprises</h6>
-                                <canvas id="ratingsChart" height="300"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="ratingsChart" class="chart-canvas"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -149,7 +195,9 @@ include ROOT_PATH . '/views/templates/header.php';
                         <div class="row">
                             <div class="col-md-6">
                                 <h6>Taux de placement des étudiants</h6>
-                                <canvas id="placementChart" height="300"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="placementChart" class="chart-canvas"></canvas>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6>Nombre moyen de candidatures par étudiant</h6>
@@ -202,6 +250,37 @@ include ROOT_PATH . '/views/templates/header.php';
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Définition des options communes pour contraindre la taille des graphiques
+            const commonOptions = {
+                maintainAspectRatio: false,
+                responsive: true,
+                animation: {
+                    duration: 1000, // Animation plus courte pour éviter les problèmes de performance
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 5,
+                        right: 10,
+                        bottom: 5,
+                        left: 10
+                    }
+                }
+            };
+
             // Préchargement des données pour optimiser le rendu JavaScript
             const skillsData = <?php echo json_encode($skillDistribution); ?>;
             const durationsData = <?php echo json_encode($offreStats['repartition_duree']); ?>;
@@ -229,7 +308,7 @@ include ROOT_PATH . '/views/templates/header.php';
                 return colors;
             }
 
-            // Graphique des compétences - Optimisé pour l'affichage d'une grande quantité de données
+            // Graphique des compétences avec contraintes dimensionnelles
             const skillsCtx = document.getElementById('skillsChart').getContext('2d');
             new Chart(skillsCtx, {
                 type: 'bar',
@@ -244,18 +323,30 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
+                    ...commonOptions,
                     indexAxis: 'y',
                     scales: {
                         x: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            // Limiter l'échelle X pour éviter l'étirement
+                            suggestedMax: Math.max(...skillsData.map(item => item.count)) * 1.1 || 10
+                        },
+                        y: {
+                            ticks: {
+                                // Limiter le nombre d'étiquettes affichées
+                                maxTicksLimit: 10,
+                                callback: function(value, index, values) {
+                                    // Tronquer les étiquettes trop longues
+                                    const label = this.getLabelForValue(value);
+                                    return label.length > 15 ? label.substring(0, 15) + '...' : label;
+                                }
+                            }
                         }
-                    },
-                    maintainAspectRatio: false,
-                    responsive: true
+                    }
                 }
             });
 
-            // Graphique des durées - Utilisation d'un graphique à secteurs pour une représentation proportionnelle
+            // Graphique des durées - Utilisation d'un graphique à secteurs avec dimensions contrôlées
             const durationCtx = document.getElementById('durationChart').getContext('2d');
             new Chart(durationCtx, {
                 type: 'pie',
@@ -268,9 +359,9 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
-                    maintainAspectRatio: false,
-                    responsive: true,
+                    ...commonOptions,
                     plugins: {
+                        ...commonOptions.plugins,
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -286,7 +377,7 @@ include ROOT_PATH . '/views/templates/header.php';
                 }
             });
 
-            // Graphique des candidatures - Évolution temporelle avec graphique linéaire
+            // Graphique des candidatures avec hauteur fixe
             const applicationsCtx = document.getElementById('applicationsChart').getContext('2d');
             new Chart(applicationsCtx, {
                 type: 'line',
@@ -306,20 +397,30 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
-                    maintainAspectRatio: false,
-                    responsive: true,
+                    ...commonOptions,
                     scales: {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                precision: 0
+                                precision: 0,
+                                // Limiter le nombre de graduations pour éviter l'étirement
+                                maxTicksLimit: 8
+                            },
+                            // Définir une valeur maximale suggérée
+                            suggestedMax: Math.max(...applicationsData.map(item => item.count)) * 1.2 || 10
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 12,
+                                maxRotation: 45,
+                                minRotation: 45
                             }
                         }
                     }
                 }
             });
 
-            // Graphique des entreprises - Top 10 par nombre d'offres
+            // Graphique des entreprises avec dimensions contraintes
             const companiesCtx = document.getElementById('companiesChart').getContext('2d');
             new Chart(companiesCtx, {
                 type: 'bar',
@@ -335,20 +436,34 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
+                    ...commonOptions,
                     scales: {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                precision: 0
+                                precision: 0,
+                                maxTicksLimit: 8
+                            },
+                            // Limiter l'échelle Y
+                            suggestedMax: Math.max(...(companiesData.length > 0 ?
+                                companiesData.map(item => item.count) : [15])) * 1.2 || 20
+                        },
+                        x: {
+                            ticks: {
+                                // Tronquer les étiquettes longues
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.length > 12 ? label.substring(0, 12) + '...' : label;
+                                },
+                                maxRotation: 45,
+                                minRotation: 45
                             }
                         }
-                    },
-                    maintainAspectRatio: false,
-                    responsive: true
+                    }
                 }
             });
 
-            // Graphique des évaluations - Distribution des notes
+            // Graphique des évaluations avec dimensions contrôlées
             const ratingsCtx = document.getElementById('ratingsChart').getContext('2d');
             new Chart(ratingsCtx, {
                 type: 'bar',
@@ -363,20 +478,23 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
+                    ...commonOptions,
                     scales: {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                precision: 0
-                            }
+                                precision: 0,
+                                maxTicksLimit: 8
+                            },
+                            // Limiter l'échelle Y
+                            suggestedMax: Math.max(...(ratingsData.length > 0 ?
+                                ratingsData.map(item => item.count) : [25])) * 1.2 || 30
                         }
-                    },
-                    maintainAspectRatio: false,
-                    responsive: true
+                    }
                 }
             });
 
-            // Graphique du taux de placement - Visualisation avec un graphique en anneau
+            // Graphique du taux de placement avec dimensions contrôlées
             const placementCtx = document.getElementById('placementChart').getContext('2d');
             new Chart(placementCtx, {
                 type: 'doughnut',
@@ -395,9 +513,10 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
-                    maintainAspectRatio: false,
-                    responsive: true,
+                    ...commonOptions,
+                    cutout: '60%',
                     plugins: {
+                        ...commonOptions.plugins,
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -413,49 +532,66 @@ include ROOT_PATH . '/views/templates/header.php';
                 }
             });
 
-            // Logique d'export CSV
+            // Logique d'export CSV optimisée
             document.getElementById('exportButton').addEventListener('click', function() {
-                // Préparation des données pour l'export
-                const exportData = [
-                    ['Catégorie', 'Métrique', 'Valeur'],
-                    ['Offres', 'Total des offres', <?php echo $stats['total_offres']; ?>],
-                    ['Offres', 'Offres actives', <?php echo $stats['offres_actives']; ?>],
-                    ['Entreprises', 'Total des entreprises', <?php echo $stats['total_entreprises']; ?>],
-                    ['Entreprises', 'Entreprises évaluées', <?php echo isset($stats['entreprises_evaluees']) ? $stats['entreprises_evaluees'] : '0'; ?>],
-                    ['Entreprises', 'Note moyenne', <?php echo isset($stats['note_moyenne']) ? $stats['note_moyenne'] : '0'; ?>],
-                    ['Étudiants', 'Total des étudiants', <?php echo $stats['total_etudiants']; ?>],
-                    ['Étudiants', 'Étudiants placés', <?php echo isset($studentStats['placement_rate']['placed']) ? $studentStats['placement_rate']['placed'] : '0'; ?>],
-                    ['Étudiants', 'Taux de placement', <?php echo isset($studentStats['placement_rate']['rate']) ? $studentStats['placement_rate']['rate'] : '0'; ?>],
-                    ['Candidatures', 'Total des candidatures', <?php echo $stats['total_candidatures']; ?>],
-                    ['Candidatures', 'Moyenne par étudiant', <?php echo isset($studentStats['avg_applications']) ? $studentStats['avg_applications'] : '0'; ?>]
-                ];
+                try {
+                    // Préparation des données pour l'export avec validation
+                    const exportData = [
+                        ['Catégorie', 'Métrique', 'Valeur'],
+                        ['Offres', 'Total des offres', <?php echo isset($stats['total_offres']) ? $stats['total_offres'] : 0; ?>],
+                        ['Offres', 'Offres actives', <?php echo isset($stats['offres_actives']) ? $stats['offres_actives'] : 0; ?>],
+                        ['Entreprises', 'Total des entreprises', <?php echo isset($stats['total_entreprises']) ? $stats['total_entreprises'] : 0; ?>],
+                        ['Entreprises', 'Entreprises évaluées', <?php echo isset($stats['entreprises_evaluees']) ? $stats['entreprises_evaluees'] : 0; ?>],
+                        ['Entreprises', 'Note moyenne', <?php echo isset($stats['note_moyenne']) ? $stats['note_moyenne'] : 0; ?>],
+                        ['Étudiants', 'Total des étudiants', <?php echo isset($stats['total_etudiants']) ? $stats['total_etudiants'] : 0; ?>],
+                        ['Étudiants', 'Étudiants placés', <?php echo isset($studentStats['placement_rate']['placed']) ? $studentStats['placement_rate']['placed'] : 0; ?>],
+                        ['Étudiants', 'Taux de placement', <?php echo isset($studentStats['placement_rate']['rate']) ? $studentStats['placement_rate']['rate'] : 0; ?>],
+                        ['Candidatures', 'Total des candidatures', <?php echo isset($stats['total_candidatures']) ? $stats['total_candidatures'] : 0; ?>],
+                        ['Candidatures', 'Moyenne par étudiant', <?php echo isset($studentStats['avg_applications']) ? $studentStats['avg_applications'] : 0; ?>]
+                    ];
 
-                // Génération du CSV
-                let csvContent = "data:text/csv;charset=utf-8,";
+                    // Génération du CSV en utilisant une approche plus robuste
+                    let csvContent = "data:text/csv;charset=utf-8,";
 
-                exportData.forEach(function(rowArray) {
-                    let row = rowArray.join(",");
-                    csvContent += row + "\r\n";
-                });
+                    // En-tête BOM pour UTF-8 (important pour Excel)
+                    csvContent += "\uFEFF";
 
-                // Déclenchement du téléchargement
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "statistiques_stages_" + new Date().toISOString().slice(0,10) + ".csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                    exportData.forEach(function(rowArray) {
+                        // Échapper les valeurs contenant des virgules
+                        const escapedRow = rowArray.map(cell => {
+                            // Convertir en string et échapper si nécessaire
+                            const cellStr = String(cell);
+                            return (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n'))
+                                ? '"' + cellStr.replace(/"/g, '""') + '"'
+                                : cellStr;
+                        });
+
+                        // Joindre les cellules avec des virgules
+                        const row = escapedRow.join(",");
+                        csvContent += row + "\r\n";
+                    });
+
+                    // Déclenchement du téléchargement avec vérification de compatibilité navigateur
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+
+                    // Vérifier si l'API de téléchargement est supportée
+                    if (typeof link.download !== 'undefined') {
+                        link.setAttribute("href", encodedUri);
+                        link.setAttribute("download", "statistiques_stages_" + new Date().toISOString().slice(0,10) + ".csv");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    } else {
+                        // Fallback pour les navigateurs plus anciens
+                        window.open(encodedUri);
+                    }
+                } catch (e) {
+                    console.error("Erreur lors de l'export CSV:", e);
+                    alert("Une erreur est survenue lors de l'export des données. Veuillez réessayer.");
+                }
             });
         });
     </script>
-
-    <style>
-        .stat-item {
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #f8f9fa;
-        }
-    </style>
 
 <?php include ROOT_PATH . '/views/templates/footer.php'; ?>

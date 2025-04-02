@@ -122,7 +122,7 @@ $isActive = $dateFin >= $now;
                             <div class="description-content">
                                 <?php
                                 // Affichage de la description avec préservation du formatage
-                                echo nl2br($offre['description']);
+                                echo nl2br(htmlspecialchars($offre['description']));
                                 ?>
                             </div>
                         </div>

@@ -90,6 +90,9 @@ class AdminController {
      * sous forme de graphiques et tableaux pour l'analyse décisionnelle.
      */
     public function stats() {
+        // Récupération des statistiques générales pour la vue (LIGNE AJOUTÉE)
+        $stats = $this->statsModel->getGeneralStats();
+
         // Récupération des statistiques détaillées avec mise en cache
         $offreStats = $this->offreModel->getStatistics();
 

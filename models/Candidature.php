@@ -654,7 +654,7 @@ class Candidature {
 
         try {
             $query = "SELECT COUNT(*) as count FROM {$this->wishlistTable} 
-                     WHERE etudiant_id = :etudiant_id AND offre_id = :offre_id";
+                 WHERE etudiant_id = :etudiant_id AND offre_id = :offre_id";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
@@ -662,7 +662,12 @@ class Candidature {
             $stmt->execute();
 
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            return (int)$row['count'] > 0;
+            $result = (int)$row['count'] > 0;
+
+            // Log pour debug
+            error_log("isInWishlist check: etudiant_id=$etudiantId, offre_id=$offreId, result=" . ($result ? "true" : "false"));
+
+            return $result;
         } catch (PDOException $e) {
             error_log("Erreur lors de la vérification de la wishlist: " . $e->getMessage());
             return false;
