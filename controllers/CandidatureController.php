@@ -80,17 +80,25 @@ class CandidatureController {
      * Affiche le formulaire de candidature et traite l'envoi
      */
     public function postuler() {
+        // Logs de débogage
+        error_log("----------- DÉBUT MÉTHODE POSTULER() -----------");
+
         // Récupération de l'ID de l'offre
         $offre_id = isset($_GET['offre_id']) ? (int)$_GET['offre_id'] : 0;
+        error_log("offre_id = $offre_id");
 
         if ($offre_id <= 0) {
+            error_log("ID invalide, redirection...");
             // Redirection vers la liste des offres si ID invalide
             redirect(url('offres'));
         }
 
         // Récupération des détails de l'offre
         $offre = $this->offreModel->getById($offre_id);
+        error_log("Offre récupérée: " . ($offre ? "oui" : "non"));
+
         if (!$offre) {
+            error_log("Offre non trouvée, redirection...");
             // Redirection vers la liste des offres si offre non trouvée
             redirect(url('offres'));
         }
@@ -98,14 +106,20 @@ class CandidatureController {
         // Vérification conditionnelle de candidature existante
         $hasCandidature = false;
         if (isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT) {
+            error_log("Test de candidature existante pour user_id=" . $_SESSION['user_id'] . " et offre_id=$offre_id");
             $hasCandidature = $this->candidatureModel->hasCandidature($_SESSION['user_id'], $offre_id);
+            error_log("hasCandidature = " . ($hasCandidature ? "true" : "false"));
+
             if ($hasCandidature) {
+                error_log("Candidature existante, redirection...");
                 $_SESSION['flash_message'] = [
                     'type' => 'warning',
                     'message' => "Vous avez déjà postulé à cette offre."
                 ];
                 redirect(url('offres', 'detail', ['id' => $offre_id]));
             }
+        } else {
+            error_log("Utilisateur non étudiant ou non connecté: " . (isset($_SESSION['role']) ? $_SESSION['role'] : 'non défini'));
         }
 
         $errors = [];
@@ -113,20 +127,25 @@ class CandidatureController {
         $lettre_motivation = "";
 
         // Traitement du formulaire
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['role'] === ROLE_ETUDIANT) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT) {
+            error_log("Traitement du formulaire POST reçu");
+
             // Récupération et nettoyage des données
             $lettre_motivation = isset($_POST['lettre_motivation']) ? cleanData($_POST['lettre_motivation']) : '';
 
             // Validation des données
             if (empty($lettre_motivation)) {
                 $errors[] = "La lettre de motivation est obligatoire.";
+                error_log("Erreur: lettre de motivation vide");
             } elseif (strlen($lettre_motivation) < 100) {
                 $errors[] = "La lettre de motivation doit contenir au moins 100 caractères.";
+                error_log("Erreur: lettre de motivation trop courte (" . strlen($lettre_motivation) . " caractères)");
             }
 
             // Validation du fichier CV
             if (!isset($_FILES['cv']) || $_FILES['cv']['error'] != UPLOAD_ERR_OK) {
                 $errors[] = "Vous devez téléverser votre CV.";
+                error_log("Erreur: fichier CV manquant ou erreur d'upload");
             } else {
                 // Vérification du type de fichier
                 $allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -134,15 +153,21 @@ class CandidatureController {
                 $fileSize = $_FILES['cv']['size'];
                 $maxSize = 5 * 1024 * 1024; // 5 Mo
 
+                error_log("CV reçu: type=$fileType, taille=$fileSize");
+
                 if (!in_array($fileType, $allowedTypes)) {
                     $errors[] = "Le format du fichier n'est pas accepté. Formats acceptés : PDF, DOC, DOCX.";
+                    error_log("Erreur: type de fichier non accepté ($fileType)");
                 } elseif ($fileSize > $maxSize) {
                     $errors[] = "Le fichier est trop volumineux. Taille maximale : 5 Mo.";
+                    error_log("Erreur: fichier trop volumineux ($fileSize octets)");
                 }
             }
 
             // Création de la candidature si pas d'erreurs
             if (empty($errors)) {
+                error_log("Validation réussie, création de la candidature");
+
                 $data = [
                     'offre_id' => $offre_id,
                     'etudiant_id' => $_SESSION['user_id'],
@@ -152,22 +177,31 @@ class CandidatureController {
                 $result = $this->candidatureModel->create($data, $_FILES);
 
                 if ($result) {
+                    error_log("Candidature créée avec succès (ID: $result)");
                     $_SESSION['flash_message'] = [
                         'type' => 'success',
                         'message' => "Votre candidature a été envoyée avec succès."
                     ];
                     redirect(url('candidatures', 'mes-candidatures'));
                 } else {
+                    error_log("Erreur lors de la création de la candidature");
                     $errors[] = "Une erreur est survenue lors de l'envoi de votre candidature.";
                 }
             }
+        } else {
+            error_log("Méthode: " . $_SERVER['REQUEST_METHOD'] . ", Role: " . (isset($_SESSION['role']) ? $_SESSION['role'] : 'non défini'));
         }
 
         // Titre de la page
         $pageTitle = "Postuler à une offre";
 
+        error_log("Variables transmises à la vue: isEtudiant=" . (isset($_SESSION['role']) && $_SESSION['role'] === ROLE_ETUDIANT ? "true" : "false"));
+        error_log("Prêt à inclure la vue postuler.php");
+
         // Chargement de la vue
         include VIEWS_PATH . '/candidatures/postuler.php';
+
+        error_log("----------- FIN MÉTHODE POSTULER() -----------");
     }
 
     /**

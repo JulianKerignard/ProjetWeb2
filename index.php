@@ -4,10 +4,12 @@
  * Gère le routage des requêtes vers les contrôleurs appropriés
  */
 
-
-// Ajoutez ce code au tout début de index.php (avant le require de bootstrap.php)
-// Debug pour les problèmes de session
+// Démarrage de la session (UNE SEULE FOIS)
 session_start();
+
+// Debug pour les problèmes de session
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 error_log("========= DÉBUT DE LA REQUÊTE =========");
 error_log("Session actuelle: " . print_r($_SESSION, true));
 error_log("URL: " . $_SERVER['REQUEST_URI']);
@@ -21,9 +23,6 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
     $_SESSION['prenom'] = 'Test';
     $_SESSION['nom'] = 'Utilisateur';
 }
-
-// Démarrer la session
-session_start();
 
 // Charger les fichiers de configuration
 require_once 'config/config.php';
@@ -221,8 +220,14 @@ switch ($page) {
             case 'mes-candidatures':
                 $controller->mesCandidatures();
                 break;
+            case 'detail':
+                $controller->detail();
+                break;
+            case 'supprimer':
+                $controller->supprimer();
+                break;
             default:
-                $controller->index();
+                $controller->mesCandidatures();
                 break;
         }
         break;
