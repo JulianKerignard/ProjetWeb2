@@ -6,7 +6,7 @@
  * et de gestion de la liste de souhaits avec validation des droits
  * d'accès et gestion robuste des erreurs.
  *
- * @version 1.2
+ * @version 1.3
  */
 class CandidatureController {
     private $candidatureModel;
@@ -62,11 +62,16 @@ class CandidatureController {
     private function getCurrentEtudiantId() {
         // Si déjà en cache dans la session, retourner directement
         if (isset($_SESSION['etudiant_id'])) {
+            error_log("ETUDIANT DEBUG: Utilisation de l'ID étudiant en cache: " . $_SESSION['etudiant_id']);
             return $_SESSION['etudiant_id'];
         }
 
         // Sinon, chercher dans la base de données
         $etudiantId = $this->etudiantModel->getEtudiantIdFromUserId($_SESSION['user_id']);
+
+        // Ajouter ces logs
+        error_log("ETUDIANT DEBUG: Récupération ID étudiant pour user_id=" . $_SESSION['user_id'] .
+            ", résultat: " . ($etudiantId ? $etudiantId : "non trouvé"));
 
         // Mettre en cache dans la session pour les futures requêtes
         if ($etudiantId) {
@@ -343,8 +348,14 @@ class CandidatureController {
         // Récupération du numéro de page courant
         $page = getCurrentPage();
 
+        // Ajout logs
+        error_log("WISHLIST DEBUG: Récupération wishlist pour etudiant_id=$etudiantId");
+
         // Récupération de la wishlist
         $wishlist = $this->candidatureModel->getWishlist($etudiantId);
+
+        error_log("WISHLIST DEBUG: Nombre d'éléments trouvés: " . count($wishlist));
+
         $totalWishlist = count($wishlist);
 
         // Pagination manuelle car getWishlist retourne déjà toutes les entrées
@@ -389,8 +400,14 @@ class CandidatureController {
             redirect(url('offres', 'detail', ['id' => $offre_id]));
         }
 
+        // Ajouter logs
+        error_log("WISHLIST DEBUG: Ajout offre_id=$offre_id pour etudiant_id=$etudiantId");
+
         // Ajout à la wishlist
         $result = $this->candidatureModel->addToWishlist($etudiantId, $offre_id);
+
+        // Ajouter log résultat
+        error_log("WISHLIST DEBUG: Résultat de l'ajout: " . var_export($result, true));
 
         // Message de confirmation
         if ($result === 'already_exists') {
@@ -452,5 +469,32 @@ class CandidatureController {
         } else {
             redirect(url('offres', 'detail', ['id' => $offre_id]));
         }
+    }
+
+    /**
+     * Répare la wishlist en synchronisant les IDs
+     */
+    public function repairWishlist() {
+        // Vider le cache de session
+        if (isset($_SESSION['etudiant_id'])) {
+            unset($_SESSION['etudiant_id']);
+        }
+
+        // Forcer la récupération de l'ID étudiant
+        $etudiantId = $this->getCurrentEtudiantId();
+
+        if ($etudiantId) {
+            $_SESSION['flash_message'] = [
+                'type' => 'success',
+                'message' => "Synchronisation de votre profil réussie. ID étudiant: $etudiantId"
+            ];
+        } else {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Impossible de synchroniser votre profil étudiant."
+            ];
+        }
+
+        redirect(url('candidatures', 'afficher-wishlist'));
     }
 }
