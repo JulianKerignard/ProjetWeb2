@@ -1,0 +1,181 @@
+/* Styles personnalisés pour la page profil utilisateur */
+
+/* Avatar de profil avec initiales */
+.profile-avatar-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+    transition: transform 0.3s ease;
+}
+
+.profile-avatar-container:hover {
+    transform: scale(1.05);
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    border: 3px solid #fff;
+}
+
+.profile-initials {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Statistiques circulaires */
+.stat-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 10px;
+    background-color: #f8f9fa;
+    border: 3px solid #dee2e6;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.stat-circle:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #495057;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Timeline d'activité */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 20px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-date {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.timeline-content {
+    display: flex;
+    align-items: flex-start;
+}
+
+.timeline-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    margin-right: 15px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 2;
+}
+
+.timeline-text {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 5px;
+    flex-grow: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease;
+}
+
+.timeline-text:hover {
+    transform: translateX(3px);
+    background-color: #f0f0f0;
+}
+
+/* Boutons d'action */
+.btn-action {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Animation de progression */
+@keyframes progress-bar-animation {
+    0% { width: 0; }
+}
+
+.progress-bar {
+    animation: progress-bar-animation 1.5s ease-out;
+}
+
+/* Ajustements pour mobile */
+@media (max-width: 768px) {
+    .profile-avatar-container {
+        width: 100px;
+        height: 100px;
+    }
+
+    .profile-initials {
+        font-size: 2rem;
+    }
+
+    .timeline {
+        padding-left: 25px;
+    }
+
+    .timeline-icon {
+        width: 25px;
+        height: 25px;
+        font-size: 0.8rem;
+    }
+
+    .stat-circle {
+        width: 70px;
+        height: 70px;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+}

@@ -9,6 +9,8 @@ class ProfileController {
     private $etudiantModel;
     private $piloteModel;
     private $authModel;
+    private $offreModel;
+    private $candidatureModel;
 
     /**
      * Constructeur - Initialise les modèles nécessaires selon le rôle de l'utilisateur
@@ -26,10 +28,18 @@ class ProfileController {
         if ($_SESSION['role'] === ROLE_ETUDIANT) {
             require_once MODELS_PATH . '/Etudiant.php';
             $this->etudiantModel = new Etudiant();
+
+            // Chargement des modèles additionnels pour étudiants
+            require_once MODELS_PATH . '/Candidature.php';
+            $this->candidatureModel = new Candidature();
         } elseif ($_SESSION['role'] === ROLE_PILOTE) {
             require_once MODELS_PATH . '/Pilote.php';
             $this->piloteModel = new Pilote();
         }
+
+        // Modèle offre pour les actualités
+        require_once MODELS_PATH . '/Offre.php';
+        $this->offreModel = new Offre();
     }
 
     /**
@@ -46,6 +56,15 @@ class ProfileController {
             ];
             redirect(url());
         }
+
+        // Récupération des données additionnelles pour enrichir le profil
+        if ($_SESSION['role'] === ROLE_ETUDIANT) {
+            // Récupération de l'activité récente pour les étudiants
+            $userProfile['activite_recente'] = $this->getRecentActivity($userProfile['id']);
+        }
+
+        // Récupération des actualités récentes du site (dernières offres)
+        $actualites = $this->getRecentSiteActivity();
 
         // Titre de la page
         $pageTitle = "Mon Profil";
@@ -171,6 +190,66 @@ class ProfileController {
             // Pour les administrateurs, on met à jour uniquement les infos utilisateur de base
             return $this->authModel->updateUser($userId, $data);
         }
+    }
+
+    /**
+     * Récupère l'activité récente de l'étudiant (candidatures et wishlist)
+     *
+     * @param int $etudiantId ID de l'étudiant
+     * @return array Activités récentes
+     */
+    private function getRecentActivity($etudiantId) {
+        $activities = [];
+
+        // Récupération des candidatures récentes
+        $candidatures = $this->etudiantModel->getCandidaturesForEtudiant($etudiantId);
+        foreach (array_slice($candidatures, 0, 5) as $candidature) {
+            $activities[] = [
+                'type' => 'candidature',
+                'date' => $candidature['date_candidature'],
+                'message' => 'Vous avez postulé à l\'offre "' . htmlspecialchars($candidature['offre_titre']) . '" chez ' . htmlspecialchars($candidature['entreprise_nom'])
+            ];
+        }
+
+        // Récupération des wishlist récentes
+        $wishlist = $this->etudiantModel->getWishlistForEtudiant($etudiantId);
+        foreach (array_slice($wishlist, 0, 5) as $item) {
+            $activities[] = [
+                'type' => 'wishlist',
+                'date' => $item['date_ajout'],
+                'message' => 'Vous avez ajouté l\'offre "' . htmlspecialchars($item['offre_titre']) . '" à vos favoris'
+            ];
+        }
+
+        // Tri par date décroissante
+        usort($activities, function($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+
+        // Limiter aux 10 dernières activités
+        return array_slice($activities, 0, 10);
+    }
+
+    /**
+     * Récupère l'activité récente du site (dernières offres, etc.)
+     *
+     * @return array Actualités du site
+     */
+    private function getRecentSiteActivity() {
+        $actualites = [];
+
+        // Récupération des dernières offres
+        $latestOffers = $this->offreModel->getLatest(5);
+        foreach ($latestOffers as $offre) {
+            $actualites[] = [
+                'titre' => 'Nouvelle offre: ' . htmlspecialchars($offre['titre']),
+                'description' => 'Publiée par ' . htmlspecialchars($offre['entreprise_nom']),
+                'date' => (new DateTime($offre['created_at']))->format('d/m/Y'),
+                'url' => url('offres', 'detail', ['id' => $offre['id']])
+            ];
+        }
+
+        return $actualites;
     }
 
     /**
