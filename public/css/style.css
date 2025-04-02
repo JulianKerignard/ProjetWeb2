@@ -162,13 +162,17 @@ img {
 }
 
 .navbar-nav .nav-link:hover {
-    color: #ffffff !important;
+    color: var(--primary) !important;
     background-color: rgba(37, 99, 235, 0.05);
 }
 
 .navbar-nav .nav-link.active {
     color: var(--primary) !important;
     background-color: rgba(37, 99, 235, 0.1);
+}
+
+.dropdown-toggle {
+    color: --white !important;
 }
 
 .dropdown-menu {
