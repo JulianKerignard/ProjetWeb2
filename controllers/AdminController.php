@@ -53,6 +53,20 @@ class AdminController {
             $this->statsModel = new Stats();
             $this->logManager = LogManager::getInstance();
 
+            // Audit technique - Initialisation du système de logs
+            $testData = [
+                'timestamp' => date('Y-m-d H:i:s'),
+                'request_uri' => $_SERVER['REQUEST_URI'],
+                'user_agent' => $_SERVER['HTTP_USER_AGENT']
+            ];
+
+            $this->logManager->info(
+                "AUDIT: Initialisation du système de logs",
+                isset($_SESSION['email']) ? $_SESSION['email'] : 'system',
+                $testData
+            );
+            $this->logManager->flushQueue(); // Force l'écriture synchrone
+
             // Journaliser l'accès au panel d'administration
             $this->logManager->info(
                 "Accès au panel d'administration",
@@ -175,6 +189,16 @@ class AdminController {
         $logsData = $this->logManager->getLogs($page, $limit, $filters, $sort);
         $logs = $logsData['logs'];
         $totalLogs = $logsData['totalLogs'];
+
+        // Création d'un log manuel pour vérification
+        $this->logManager->warning(
+            "TEST MANUEL - Vérification affichage des logs",
+            isset($_SESSION['email']) ? $_SESSION['email'] : 'admin-test',
+            ['test_timestamp' => date('Y-m-d H:i:s')]
+        );
+        $this->logManager->flushQueue();
+
+        error_log("Requête logs: COUNT=" . $logsData['totalLogs']);
 
         // Si demande AJAX, retourner les données au format JSON
         if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {

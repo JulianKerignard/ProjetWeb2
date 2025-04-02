@@ -30,7 +30,7 @@ class LogManager {
     private static $logQueue = [];
 
     /** @var int Taille maximale de la file d'attente avant déchargement */
-    private $queueMaxSize = 20;
+    private $queueMaxSize = 1; // Modifié de 20 à 1 pour forcer l'écriture immédiate
 
     /** @var int Âge maximal des logs en jours (pour rotation) */
     private $maxLogAge = 30;
@@ -303,11 +303,14 @@ class LogManager {
      */
     private function flushQueueToDatabase() {
         if (!$this->dbConnection) {
+            error_log("[LogManager] Connexion BDD non disponible, utilisation des fichiers");
             $this->flushQueueToFile();
             return;
         }
 
         try {
+            error_log("[LogManager] Tentative d'écriture en BDD - " . count(self::$logQueue) . " entrées");
+
             // Préparer la requête d'insertion
             $query = "INSERT INTO {$this->logTable} 
                      (timestamp, user, action, ip, level, context) 
@@ -330,12 +333,15 @@ class LogManager {
             }
 
             $this->dbConnection->commit();
+            error_log("[LogManager] Écriture en BDD réussie");
         } catch (PDOException $e) {
             // En cas d'échec, annuler la transaction et basculer vers le fichier
             if ($this->dbConnection->inTransaction()) {
                 $this->dbConnection->rollBack();
             }
-            error_log("Erreur lors de l'écriture des logs en BDD: " . $e->getMessage());
+            error_log("[LogManager] ERREUR PDO: " . $e->getMessage() .
+                " - Query: " . $query .
+                " - Backtrace: " . json_encode(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)));
             $this->flushQueueToFile();
         }
     }
@@ -464,6 +470,8 @@ class LogManager {
                       ORDER BY {$orderField} {$orderDirection} 
                       LIMIT :limit OFFSET :offset";
 
+            error_log("[LogManager] Exécution requête getLogs: " . $query);
+
             $stmt = $this->dbConnection->prepare($query);
 
             foreach ($params as $key => $value) {
@@ -476,9 +484,11 @@ class LogManager {
             $stmt->execute();
             $result['logs'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            error_log("[LogManager] Requête getLogs résultat: " . count($result['logs']) . " enregistrements");
+
             return $result;
         } catch (PDOException $e) {
-            error_log("Erreur lors de la récupération des logs: " . $e->getMessage());
+            error_log("[LogManager] Erreur lors de la récupération des logs: " . $e->getMessage());
             return $result;
         }
     }
