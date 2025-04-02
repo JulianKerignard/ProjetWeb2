@@ -5,11 +5,13 @@
  * Implémente les fonctionnalités CRUD et métier pour les étudiants
  * avec validation des droits d'accès et gestion robuste des erreurs.
  *
- * @version 1.0
+ * @version 1.1
  */
 class EtudiantController {
     private $etudiantModel;
     private $candidatureModel;
+    private $centreModel;
+    private $logManager;
 
     /**
      * Constructeur - Initialise les modèles nécessaires avec vérification des droits
@@ -18,6 +20,14 @@ class EtudiantController {
         // Chargement des modèles nécessaires
         require_once MODELS_PATH . '/Etudiant.php';
         $this->etudiantModel = new Etudiant();
+
+        // Chargement du modèle Centre pour la gestion des centres
+        require_once MODELS_PATH . '/Centre.php';
+        $this->centreModel = new Centre();
+
+        // Chargement du gestionnaire de logs
+        require_once ROOT_PATH . '/includes/LogManager.php';
+        $this->logManager = LogManager::getInstance();
 
         // Chargement optionnel du modèle Candidature pour les statistiques
         if (in_array($_GET['action'] ?? 'index', ['statistiques', 'detail'])) {
@@ -70,15 +80,42 @@ class EtudiantController {
             $filters['email'] = cleanData($_GET['email']);
         }
 
+        if (isset($_GET['centre_id']) && !empty($_GET['centre_id'])) {
+            $filters['centre_id'] = (int)$_GET['centre_id'];
+        }
+
         if (isset($_GET['with_candidatures']) && $_GET['with_candidatures'] == '1') {
             $filters['with_candidatures'] = true;
         }
+
+        // Restriction pour les pilotes - voir uniquement les étudiants de leur centre
+        if (isPilote() && !isAdmin()) {
+            $piloteModel = new Pilote();
+            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+            if ($pilote && $pilote['centre_id']) {
+                $filters['pilote_centre_id'] = $pilote['centre_id'];
+            }
+        }
+
+        // Récupération des centres pour le filtre
+        $centres = $this->centreModel->getAllForSelect();
 
         // Récupération des étudiants paginés
         $etudiants = $this->etudiantModel->getAll($page, ITEMS_PER_PAGE, $filters);
 
         // Comptage du nombre total d'étudiants pour la pagination
         $totalEtudiants = $this->etudiantModel->countAll($filters);
+
+        // Journaliser l'accès à la liste des étudiants
+        $this->logManager->info(
+            "Consultation de la liste des étudiants",
+            $_SESSION['email'],
+            [
+                'page' => $page,
+                'filters' => $filters,
+                'results_count' => count($etudiants)
+            ]
+        );
 
         // Définir le titre de la page
         $pageTitle = "Liste des étudiants";
@@ -99,8 +136,8 @@ class EtudiantController {
      * Affiche les détails d'un étudiant avec ses candidatures
      */
     public function detail() {
-        // Vérification des droits d'accès (admin ou pilote)
-        if (!isAdmin() && !isPilote()) {
+        // Vérification des droits d'accès (admin, pilote ou l'étudiant lui-même)
+        if (!isAdmin() && !isPilote() && (!isLoggedIn() || $_SESSION['role'] !== ROLE_ETUDIANT || $_SESSION['etudiant_id'] != $_GET['id'])) {
             // Redirection vers la page d'accueil
             redirect(url());
         }
@@ -120,6 +157,42 @@ class EtudiantController {
             // Redirection vers la liste si étudiant non trouvé
             redirect(url('etudiants'));
         }
+
+        // Si pilote, vérifier l'accès au centre
+        if (isPilote() && !isAdmin()) {
+            $piloteModel = new Pilote();
+            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+
+            if ($pilote && $pilote['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
+                // Redirection si l'étudiant n'est pas du même centre que le pilote
+                $this->logManager->warning(
+                    "Tentative d'accès aux détails d'un étudiant d'un autre centre",
+                    $_SESSION['email'],
+                    [
+                        'etudiant_id' => $id,
+                        'etudiant_centre_id' => $etudiant['centre_id'],
+                        'pilote_centre_id' => $pilote['centre_id']
+                    ]
+                );
+
+                $_SESSION['flash_message'] = [
+                    'type' => 'danger',
+                    'message' => "Vous n'avez pas l'autorisation d'accéder aux détails de cet étudiant."
+                ];
+
+                redirect(url('etudiants'));
+            }
+        }
+
+        // Journaliser l'accès aux détails de l'étudiant
+        $this->logManager->info(
+            "Consultation des détails d'un étudiant",
+            $_SESSION['email'],
+            [
+                'etudiant_id' => $id,
+                'etudiant_nom' => $etudiant['nom'] . ' ' . $etudiant['prenom']
+            ]
+        );
 
         // Définir le titre de la page
         $pageTitle = "Profil de l'étudiant: " . $etudiant['prenom'] . ' ' . $etudiant['nom'];
@@ -144,10 +217,8 @@ class EtudiantController {
         $errors = [];
         $success = false;
 
-        // Chargement du modèle des centres pour le select
-        require_once MODELS_PATH . '/Centre.php';
-        $centreModel = new Centre();
-        $centres = $centreModel->getAllForSelect();
+        // Récupération des centres pour le select
+        $centres = $this->centreModel->getAllForSelect();
 
         // Traitement du formulaire de création
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -157,7 +228,7 @@ class EtudiantController {
                 'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
                 'email' => isset($_POST['email']) ? cleanData($_POST['email']) : '',
                 'password' => isset($_POST['password']) ? $_POST['password'] : '',
-                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : null
+                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : 1 // Centre 1 par défaut
             ];
 
             // Validation des données
@@ -168,6 +239,17 @@ class EtudiantController {
                 $result = $this->etudiantModel->create($etudiant);
 
                 if ($result) {
+                    // Journaliser le succès
+                    $this->logManager->success(
+                        "Création d'un étudiant",
+                        $_SESSION['email'],
+                        [
+                            'etudiant_id' => $result,
+                            'etudiant_nom' => $etudiant['nom'] . ' ' . $etudiant['prenom'],
+                            'etudiant_centre_id' => $etudiant['centre_id']
+                        ]
+                    );
+
                     // Redirection vers la liste avec message de succès
                     $_SESSION['flash_message'] = [
                         'type' => 'success',
@@ -176,6 +258,16 @@ class EtudiantController {
                     redirect(url('etudiants'));
                 } else {
                     $errors[] = "Une erreur est survenue lors de la création de l'étudiant.";
+
+                    // Journaliser l'échec
+                    $this->logManager->error(
+                        "Échec de création d'un étudiant",
+                        $_SESSION['email'],
+                        [
+                            'etudiant_nom' => $etudiant['nom'] . ' ' . $etudiant['prenom'],
+                            'errors' => $errors
+                        ]
+                    );
                 }
             }
         }
@@ -188,207 +280,4 @@ class EtudiantController {
     }
 
     /**
-     * Formulaire et traitement de modification d'étudiant
-     */
-    public function modifier() {
-        // Récupération de l'ID de l'étudiant
-        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-        if ($id <= 0) {
-            // Redirection vers la liste si ID invalide
-            redirect(url('etudiants'));
-        }
-
-        // Récupération des détails de l'étudiant
-        $etudiant = $this->etudiantModel->getById($id);
-
-        if (!$etudiant) {
-            // Redirection vers la liste si étudiant non trouvé
-            redirect(url('etudiants'));
-        }
-
-        // Chargement du modèle des centres pour le select
-        require_once MODELS_PATH . '/Centre.php';
-        $centreModel = new Centre();
-        $centres = $centreModel->getAllForSelect();
-
-        $errors = [];
-        $success = false;
-
-        // Traitement du formulaire de modification
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Récupération et nettoyage des données
-            $updatedEtudiant = [
-                'nom' => isset($_POST['nom']) ? cleanData($_POST['nom']) : '',
-                'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
-                'email' => isset($_POST['email']) ? cleanData($_POST['email']) : '',
-                'password' => isset($_POST['password']) ? $_POST['password'] : '',
-                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : null
-            ];
-
-            // Validation des données (mode édition)
-            $errors = $this->validateEtudiantForm($updatedEtudiant, true);
-
-            // Si pas d'erreurs, mise à jour de l'étudiant
-            if (empty($errors)) {
-                $result = $this->etudiantModel->update($id, $updatedEtudiant);
-
-                if ($result) {
-                    $success = true;
-                    // Rafraîchissement des données de l'étudiant
-                    $etudiant = $this->etudiantModel->getById($id);
-                } else {
-                    $errors[] = "Une erreur est survenue lors de la mise à jour de l'étudiant.";
-                }
-            }
-        }
-
-        // Définir le titre de la page
-        $pageTitle = "Modifier l'étudiant";
-
-        // Chargement de la vue
-        include VIEWS_PATH . '/etudiants/form.php';
-    }
-
-    /**
-     * Suppression d'un étudiant et de ses données associées
-     */
-    public function supprimer() {
-        // Récupération de l'ID de l'étudiant
-        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-        if ($id <= 0) {
-            // Redirection vers la liste si ID invalide
-            redirect(url('etudiants'));
-        }
-
-        // Vérification de l'existence de l'étudiant
-        $etudiant = $this->etudiantModel->getById($id);
-
-        if (!$etudiant) {
-            // Redirection vers la liste si étudiant non trouvé
-            redirect(url('etudiants'));
-        }
-
-        // Confirmation de suppression
-        if (isset($_GET['confirm']) && $_GET['confirm'] == 1) {
-            $result = $this->etudiantModel->delete($id);
-
-            if ($result) {
-                // Redirection vers la liste avec message de succès
-                $_SESSION['flash_message'] = [
-                    'type' => 'success',
-                    'message' => "L'étudiant a été supprimé avec succès."
-                ];
-            } else {
-                // Redirection vers la liste avec message d'erreur
-                $_SESSION['flash_message'] = [
-                    'type' => 'danger',
-                    'message' => "Une erreur est survenue lors de la suppression de l'étudiant."
-                ];
-            }
-
-            redirect(url('etudiants'));
-        }
-
-        // Définir le titre de la page
-        $pageTitle = "Supprimer l'étudiant";
-
-        // Chargement de la vue de confirmation
-        include VIEWS_PATH . '/etudiants/supprimer.php';
-    }
-
-    /**
-     * Affichage des statistiques d'un étudiant
-     */
-    public function statistiques() {
-        // Vérification des droits d'accès (admin ou pilote)
-        if (!isAdmin() && !isPilote()) {
-            // Redirection vers la page d'accueil
-            redirect(url());
-        }
-
-        // Récupération de l'ID de l'étudiant
-        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-        if ($id <= 0) {
-            // Redirection vers la liste si ID invalide
-            redirect(url('etudiants'));
-        }
-
-        // Récupération des détails de l'étudiant
-        $etudiant = $this->etudiantModel->getById($id);
-
-        if (!$etudiant) {
-            // Redirection vers la liste si étudiant non trouvé
-            redirect(url('etudiants'));
-        }
-
-        // Récupération des statistiques de l'étudiant
-        // - Nombre de candidatures
-        // - Répartition par statut
-        // - Offres en wishlist
-        $statistiques = [
-            'nb_candidatures' => $etudiant['nb_candidatures'],
-            'nb_wishlist' => $etudiant['nb_wishlist'],
-            'candidatures' => $etudiant['candidatures'],
-            'wishlist' => $etudiant['wishlist']
-        ];
-
-        // Définir le titre de la page
-        $pageTitle = "Statistiques de " . $etudiant['prenom'] . ' ' . $etudiant['nom'];
-
-        // Chargement de la vue
-        include VIEWS_PATH . '/etudiants/statistiques.php';
-    }
-
-    /**
-     * Validation des données du formulaire étudiant
-     *
-     * @param array $data Données à valider
-     * @param bool $isEdit Mode édition (true) ou création (false)
-     * @return array Liste des erreurs de validation
-     */
-    private function validateEtudiantForm($data, $isEdit = false) {
-        $errors = [];
-
-        // Validation du nom
-        if (empty($data['nom'])) {
-            $errors[] = "Le nom est obligatoire.";
-        } elseif (strlen($data['nom']) < 2 || strlen($data['nom']) > 50) {
-            $errors[] = "Le nom doit contenir entre 2 et 50 caractères.";
-        }
-
-        // Validation du prénom
-        if (empty($data['prenom'])) {
-            $errors[] = "Le prénom est obligatoire.";
-        } elseif (strlen($data['prenom']) < 2 || strlen($data['prenom']) > 50) {
-            $errors[] = "Le prénom doit contenir entre 2 et 50 caractères.";
-        }
-
-        // Validation de l'email
-        if (empty($data['email'])) {
-            $errors[] = "L'email est obligatoire.";
-        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "L'email n'est pas valide.";
-        }
-
-        // Validation du mot de passe (uniquement en création ou si fourni en édition)
-        if (!$isEdit || !empty($data['password'])) {
-            if (empty($data['password'])) {
-                $errors[] = "Le mot de passe est obligatoire.";
-            } elseif (strlen($data['password']) < 6) {
-                $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
-            }
-        }
-
-        // Validation du centre (optionnel)
-        if (isset($data['centre_id']) && !empty($data['centre_id'])) {
-            if (!is_numeric($data['centre_id'])) {
-                $errors[] = "Le centre sélectionné n'est pas valide.";
-            }
-        }
-
-        return $errors;
-    }
-}
+     * Formulaire et traitement de modification
