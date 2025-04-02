@@ -79,6 +79,11 @@ define('SESSION_HTTPONLY', true);
 define('ITEMS_PER_PAGE', 10);
 define('MAX_PAGINATION_LINKS', 5);
 
+// Configuration des logs
+define('LOG_AUTO_REFRESH', true); // Actualisation automatique des logs
+define('LOG_REFRESH_INTERVAL', 30000); // Intervalle en millisecondes (30 secondes)
+define('LOGS_PER_PAGE', 50); // Nombre de logs par page
+
 // Configuration des téléchargements
 define('UPLOAD_DIR', ROOT_PATH . '/public/uploads/');
 define('ALLOWED_EXTENSIONS', ['pdf', 'doc', 'docx']);

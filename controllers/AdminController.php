@@ -5,7 +5,7 @@
  * Ce contrôleur implémente les fonctionnalités centrales de l'administration
  * avec un focus sur la sécurité, les statistiques et la gestion système.
  *
- * @version 1.0
+ * @version 1.1
  */
 class AdminController {
     private $offreModel;
@@ -13,6 +13,7 @@ class AdminController {
     private $etudiantModel;
     private $piloteModel;
     private $statsModel;
+    private $logManager;
 
     /**
      * Constructeur - Initialise les modèles nécessaires avec vérification des droits
@@ -43,12 +44,22 @@ class AdminController {
             require_once MODELS_PATH . '/Etudiant.php';
             require_once MODELS_PATH . '/Pilote.php';
             require_once MODELS_PATH . '/Stats.php';
+            require_once ROOT_PATH . '/includes/LogManager.php';
 
             $this->offreModel = new Offre();
             $this->entrepriseModel = new Entreprise();
             $this->etudiantModel = new Etudiant();
             $this->piloteModel = new Pilote();
             $this->statsModel = new Stats();
+            $this->logManager = LogManager::getInstance();
+
+            // Journaliser l'accès au panel d'administration
+            $this->logManager->info(
+                "Accès au panel d'administration",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null,
+                ['section' => isset($_GET['action']) ? $_GET['action'] : 'index']
+            );
+
         } catch (Exception $e) {
             // Gestion des erreurs d'initialisation des modèles
             error_log("Erreur d'initialisation du contrôleur Admin: " . $e->getMessage());
@@ -90,7 +101,7 @@ class AdminController {
      * sous forme de graphiques et tableaux pour l'analyse décisionnelle.
      */
     public function stats() {
-        // Récupération des statistiques générales pour la vue (LIGNE AJOUTÉE)
+        // Récupération des statistiques générales
         $stats = $this->statsModel->getGeneralStats();
 
         // Récupération des statistiques détaillées avec mise en cache
@@ -142,13 +153,45 @@ class AdminController {
      *
      * Affiche l'historique des actions système pour l'audit de sécurité
      * et le diagnostic des problèmes techniques.
+     * Implémente une pagination côté serveur et un support AJAX pour l'actualisation.
      */
     public function logs() {
-        // Récupération des journaux d'activité avec pagination
+        // Récupération du numéro de page courant
         $page = getCurrentPage();
-        $limit = 50; // Plus élevé que la pagination standard
 
-        $logs = $this->statsModel->getActivityLogs($limit);
+        // Limite de logs par page (plus élevée que la pagination standard)
+        $limit = defined('LOGS_PER_PAGE') ? LOGS_PER_PAGE : 50;
+
+        // Extraction des filtres depuis la requête
+        $filters = $this->getLogsFilters();
+
+        // Options de tri
+        $sort = [
+            'field' => isset($_GET['sort']) ? $_GET['sort'] : 'timestamp',
+            'order' => isset($_GET['order']) ? $_GET['order'] : 'desc'
+        ];
+
+        // Récupération des logs avec pagination et filtrage
+        $logsData = $this->logManager->getLogs($page, $limit, $filters, $sort);
+        $logs = $logsData['logs'];
+        $totalLogs = $logsData['totalLogs'];
+
+        // Si demande AJAX, retourner les données au format JSON
+        if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'logs' => $logs,
+                'totalLogs' => $totalLogs
+            ]);
+            exit;
+        }
+
+        // Journaliser la consultation des logs
+        $this->logManager->info(
+            "Consultation des journaux d'activité",
+            null,
+            ['filters' => $filters, 'page' => $page]
+        );
 
         // Définir le titre de la page
         $pageTitle = "Journaux d'activité";
@@ -172,13 +215,91 @@ class AdminController {
         // Traitement des actions de maintenance
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_POST['clear_cache'])) {
-                // Simulation de purge du cache
-                $message = "Le cache a été purgé avec succès.";
-                $messageType = "success";
+                // Vidage du cache
+                $cacheDir = ROOT_PATH . '/cache';
+                if (is_dir($cacheDir)) {
+                    $this->clearDirectory($cacheDir);
+                    $message = "Le cache a été purgé avec succès.";
+                    $messageType = "success";
+
+                    // Journaliser l'action
+                    $this->logManager->success("Purge du cache système effectuée");
+                }
             } elseif (isset($_POST['optimize_db'])) {
-                // Simulation d'optimisation de la base de données
-                $message = "La base de données a été optimisée avec succès.";
-                $messageType = "success";
+                // Optimisation de la base de données
+                try {
+                    require_once ROOT_PATH . '/config/database.php';
+                    $database = new Database();
+                    $conn = $database->getConnection();
+
+                    // Récupération des tables
+                    $query = "SHOW TABLES";
+                    $stmt = $conn->prepare($query);
+                    $stmt->execute();
+                    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                    // Optimisation de chaque table
+                    foreach ($tables as $table) {
+                        $conn->exec("OPTIMIZE TABLE `{$table}`");
+                    }
+
+                    $message = "La base de données a été optimisée avec succès.";
+                    $messageType = "success";
+
+                    // Journaliser l'action
+                    $this->logManager->success("Optimisation de la base de données effectuée");
+                } catch (PDOException $e) {
+                    $message = "Erreur lors de l'optimisation de la base de données: " . $e->getMessage();
+                    $messageType = "danger";
+
+                    // Journaliser l'erreur
+                    $this->logManager->error(
+                        "Échec de l'optimisation de la base de données",
+                        null,
+                        ['error' => $e->getMessage()]
+                    );
+                }
+            } elseif (isset($_POST['purge_logs'])) {
+                // Purge manuelle des logs anciens
+                $days = isset($_POST['log_days']) ? intval($_POST['log_days']) : 30;
+
+                if ($days < 1) {
+                    $days = 30; // Valeur par défaut
+                }
+
+                // Nettoyer les logs plus anciens que le nombre de jours spécifié
+                try {
+                    require_once ROOT_PATH . '/config/database.php';
+                    $database = new Database();
+                    $conn = $database->getConnection();
+
+                    $query = "DELETE FROM system_logs WHERE timestamp < DATE_SUB(NOW(), INTERVAL :days DAY)";
+                    $stmt = $conn->prepare($query);
+                    $stmt->bindParam(':days', $days, PDO::PARAM_INT);
+                    $stmt->execute();
+
+                    $rowCount = $stmt->rowCount();
+
+                    $message = "{$rowCount} entrées de journal ont été purgées avec succès.";
+                    $messageType = "success";
+
+                    // Journaliser l'action
+                    $this->logManager->success(
+                        "Purge manuelle des journaux d'activité effectuée",
+                        null,
+                        ['days' => $days, 'entries_deleted' => $rowCount]
+                    );
+                } catch (PDOException $e) {
+                    $message = "Erreur lors de la purge des journaux: " . $e->getMessage();
+                    $messageType = "danger";
+
+                    // Journaliser l'erreur
+                    $this->logManager->error(
+                        "Échec de la purge des journaux d'activité",
+                        null,
+                        ['error' => $e->getMessage(), 'days' => $days]
+                    );
+                }
             }
         }
 
@@ -187,5 +308,57 @@ class AdminController {
 
         // Chargement de la vue
         include VIEWS_PATH . '/admin/maintenance.php';
+    }
+
+    /**
+     * Récupère les filtres de recherche pour les logs depuis la requête
+     *
+     * @return array Tableau des filtres normalisés
+     */
+    private function getLogsFilters() {
+        $filters = [];
+
+        // Filtre par date
+        if (isset($_GET['date']) && !empty($_GET['date'])) {
+            $filters['date'] = $_GET['date'];
+        }
+
+        // Filtre par utilisateur
+        if (isset($_GET['user']) && !empty($_GET['user'])) {
+            $filters['user'] = cleanData($_GET['user']);
+        }
+
+        // Filtre par type d'action
+        if (isset($_GET['type']) && !empty($_GET['type'])) {
+            $filters['type'] = cleanData($_GET['type']);
+        }
+
+        // Filtre par niveau
+        if (isset($_GET['level']) && !empty($_GET['level'])) {
+            $filters['level'] = strtoupper(cleanData($_GET['level']));
+        }
+
+        return $filters;
+    }
+
+    /**
+     * Vide un répertoire sans le supprimer
+     *
+     * @param string $dir Chemin du répertoire à vider
+     */
+    private function clearDirectory($dir) {
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        $files = glob($dir . '/*');
+        foreach ($files as $file) {
+            if (is_dir($file)) {
+                $this->clearDirectory($file);
+                @rmdir($file);
+            } else {
+                @unlink($file);
+            }
+        }
     }
 }
