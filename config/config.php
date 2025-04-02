@@ -30,7 +30,7 @@ switch (ENVIRONMENT) {
 }
 
 // Informations générales de l'application
-define('SITE_NAME', 'Gestion des Stages CESI');
+define('SITE_NAME', 'LeBonPlan');
 define('SITE_VERSION', '1.0.0');
 define('SITE_AUTHOR', 'Web4All');
 
