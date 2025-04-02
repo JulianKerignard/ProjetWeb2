@@ -24,7 +24,7 @@ include ROOT_PATH . '/views/templates/header.php';
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-6 hero-content">
-                    <h1 class="display-4 fw-bold mb-4">Trouvez le Stage idéal pour votre carrière</h1>
+                    <h1 class="display-4 fw-bold mb-4">Trouvez le test Stage idéal pour votre carrière</h1>
                     <p class="lead mb-5">Une plateforme complète pour vous aider dans votre recherche de stage et faciliter votre entrée dans le monde professionnel.</p>
                     <?php if (!isLoggedIn()): ?>
                         <div class="d-grid gap-2 d-md-flex">
@@ -44,7 +44,7 @@ include ROOT_PATH . '/views/templates/header.php';
                     <?php endif; ?>
                 </div>
                 <div class="col-lg-6 d-none d-lg-block">
-                    <img src="<?php echo URL_ROOT; ?>/public/img/hero-image.svg" alt="Stage" class="img-fluid hero-image">
+                    <img src="<?php echo URL_ROOT; ?>/public/img/hero-image.jpg" alt="Stage" class="img-fluid hero-image">
                 </div>
             </div>
         </div>
