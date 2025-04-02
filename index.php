@@ -14,16 +14,6 @@ error_log("========= DÉBUT DE LA REQUÊTE =========");
 error_log("Session actuelle: " . print_r($_SESSION, true));
 error_log("URL: " . $_SERVER['REQUEST_URI']);
 
-// Si on est en mode développement, créer un utilisateur de test si nécessaire
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
-    error_log("Création automatique d'un utilisateur test pour le développement");
-    // Définir des valeurs par défaut pour le développement
-    $_SESSION['user_id'] = 1;
-    $_SESSION['role'] = 'etudiant'; // Assurez-vous que cette valeur correspond à ROLE_ETUDIANT
-    $_SESSION['prenom'] = 'Test';
-    $_SESSION['nom'] = 'Utilisateur';
-}
-
 // Charger les fichiers de configuration
 require_once 'config/config.php';
 require_once 'config/database.php';
