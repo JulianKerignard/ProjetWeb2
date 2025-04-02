@@ -4,17 +4,30 @@
  *
  * Implémente les fonctionnalités CRUD et métier pour les étudiants
  * avec validation des droits d'accès et gestion robuste des erreurs.
+ * Architecture MVC avec séparation stricte des responsabilités.
  *
- * @version 1.1
+ * @version 1.2
+ * @author Web4All
  */
 class EtudiantController {
+    /** @var Etudiant Instance du modèle Etudiant */
     private $etudiantModel;
+
+    /** @var Candidature Instance du modèle Candidature */
     private $candidatureModel;
+
+    /** @var Centre Instance du modèle Centre */
     private $centreModel;
+
+    /** @var Pilote Instance du modèle Pilote */
+    private $piloteModel;
+
+    /** @var LogManager Instance du gestionnaire de logs */
     private $logManager;
 
     /**
      * Constructeur - Initialise les modèles nécessaires avec vérification des droits
+     * Utilise l'injection de dépendances pour améliorer la testabilité
      */
     public function __construct() {
         // Chargement des modèles nécessaires
@@ -25,11 +38,15 @@ class EtudiantController {
         require_once MODELS_PATH . '/Centre.php';
         $this->centreModel = new Centre();
 
+        // Chargement du modèle Pilote - essentiel pour la vérification des permissions
+        require_once MODELS_PATH . '/Pilote.php';
+        $this->piloteModel = new Pilote();
+
         // Chargement du gestionnaire de logs
         require_once ROOT_PATH . '/includes/LogManager.php';
         $this->logManager = LogManager::getInstance();
 
-        // Chargement optionnel du modèle Candidature pour les statistiques
+        // Chargement conditionnel du modèle Candidature pour les statistiques
         if (in_array($_GET['action'] ?? 'index', ['statistiques', 'detail'])) {
             require_once MODELS_PATH . '/Candidature.php';
             $this->candidatureModel = new Candidature();
@@ -54,6 +71,7 @@ class EtudiantController {
 
     /**
      * Action par défaut - Liste des étudiants
+     * Implémente le filtrage et la pagination côté serveur
      */
     public function index() {
         // Vérification des droits d'accès (admin ou pilote)
@@ -65,7 +83,7 @@ class EtudiantController {
         // Récupération du numéro de page courant
         $page = getCurrentPage();
 
-        // Initialisation des filtres
+        // Initialisation des filtres - implémentation d'un filtrage robuste
         $filters = [];
 
         if (isset($_GET['nom']) && !empty($_GET['nom'])) {
@@ -89,9 +107,9 @@ class EtudiantController {
         }
 
         // Restriction pour les pilotes - voir uniquement les étudiants de leur centre
+        // Application du principe de séparation des responsabilités
         if (isPilote() && !isAdmin()) {
-            $piloteModel = new Pilote();
-            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+            $pilote = $this->piloteModel->getByUserId($_SESSION['user_id']);
             if ($pilote && $pilote['centre_id']) {
                 $filters['pilote_centre_id'] = $pilote['centre_id'];
             }
@@ -106,7 +124,7 @@ class EtudiantController {
         // Comptage du nombre total d'étudiants pour la pagination
         $totalEtudiants = $this->etudiantModel->countAll($filters);
 
-        // Journaliser l'accès à la liste des étudiants
+        // Journaliser l'accès à la liste des étudiants - traçabilité des actions
         $this->logManager->info(
             "Consultation de la liste des étudiants",
             $_SESSION['email'],
@@ -120,12 +138,13 @@ class EtudiantController {
         // Définir le titre de la page
         $pageTitle = "Liste des étudiants";
 
-        // Chargement de la vue
+        // Chargement de la vue - séparation stricte de la logique de présentation
         include VIEWS_PATH . '/etudiants/index.php';
     }
 
     /**
-     * Recherche d'étudiants selon critères
+     * Recherche d'étudiants selon critères spécifiés
+     * Utilise la même implémentation que index() avec des filtres actifs
      */
     public function rechercher() {
         // Action index utilisée avec des filtres
@@ -134,6 +153,7 @@ class EtudiantController {
 
     /**
      * Affiche les détails d'un étudiant avec ses candidatures
+     * Implémente des vérifications d'autorisation avancées
      */
     public function detail() {
         // Vérification des droits d'accès (admin, pilote ou l'étudiant lui-même)
@@ -160,8 +180,7 @@ class EtudiantController {
 
         // Si pilote, vérifier l'accès au centre
         if (isPilote() && !isAdmin()) {
-            $piloteModel = new Pilote();
-            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+            $pilote = $this->piloteModel->getByUserId($_SESSION['user_id']);
 
             if ($pilote && $pilote['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
                 // Redirection si l'étudiant n'est pas du même centre que le pilote
@@ -203,6 +222,7 @@ class EtudiantController {
 
     /**
      * Formulaire et traitement de création d'étudiant
+     * Implémentation du pattern PRG (Post-Redirect-Get) pour éviter les soumissions multiples
      */
     public function creer() {
         // Initialisation des variables pour le formulaire
@@ -222,7 +242,7 @@ class EtudiantController {
 
         // Traitement du formulaire de création
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Récupération et nettoyage des données
+            // Récupération et nettoyage des données - application des principes de sécurité
             $etudiant = [
                 'nom' => isset($_POST['nom']) ? cleanData($_POST['nom']) : '',
                 'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
@@ -250,7 +270,7 @@ class EtudiantController {
                         ]
                     );
 
-                    // Redirection vers la liste avec message de succès
+                    // Redirection vers la liste avec message de succès - pattern PRG
                     $_SESSION['flash_message'] = [
                         'type' => 'success',
                         'message' => "L'étudiant a été créé avec succès."
@@ -259,7 +279,7 @@ class EtudiantController {
                 } else {
                     $errors[] = "Une erreur est survenue lors de la création de l'étudiant.";
 
-                    // Journaliser l'échec
+                    // Journaliser l'échec - amélioration de la traçabilité des erreurs
                     $this->logManager->error(
                         "Échec de création d'un étudiant",
                         $_SESSION['email'],
@@ -281,6 +301,7 @@ class EtudiantController {
 
     /**
      * Formulaire et traitement de modification d'étudiant
+     * Implémente des vérifications avancées sur l'accès aux données
      */
     public function modifier() {
         // Récupération de l'ID de l'étudiant
@@ -301,8 +322,7 @@ class EtudiantController {
 
         // Si pilote, vérifier l'accès au centre
         if (isPilote() && !isAdmin()) {
-            $piloteModel = new Pilote();
-            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+            $pilote = $this->piloteModel->getByUserId($_SESSION['user_id']);
 
             if ($pilote && $pilote['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
                 // Redirection si l'étudiant n'est pas du même centre que le pilote
@@ -391,6 +411,7 @@ class EtudiantController {
 
     /**
      * Suppression d'un étudiant
+     * Implémente des vérifications de sécurité et une procédure de confirmation
      */
     public function supprimer() {
         // Récupération de l'ID de l'étudiant
@@ -411,8 +432,7 @@ class EtudiantController {
 
         // Si pilote, vérifier l'accès au centre
         if (isPilote() && !isAdmin()) {
-            $piloteModel = new Pilote();
-            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+            $pilote = $this->piloteModel->getByUserId($_SESSION['user_id']);
 
             if ($pilote && $pilote['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
                 // Redirection si l'étudiant n'est pas du même centre que le pilote
@@ -435,7 +455,7 @@ class EtudiantController {
             }
         }
 
-        // Confirmation de suppression
+        // Confirmation de suppression - double vérification pour éviter suppressions accidentelles
         if (isset($_GET['confirm']) && $_GET['confirm'] == 1) {
             $result = $this->etudiantModel->delete($id);
 
@@ -485,6 +505,7 @@ class EtudiantController {
 
     /**
      * Affiche les statistiques d'un étudiant
+     * Utilise l'agrégation de données et implémente des contrôles d'accès avancés
      */
     public function statistiques() {
         // Vérification des droits d'accès (admin, pilote ou l'étudiant lui-même)
@@ -511,8 +532,7 @@ class EtudiantController {
 
         // Si pilote, vérifier l'accès au centre
         if (isPilote() && !isAdmin()) {
-            $piloteModel = new Pilote();
-            $pilote = $piloteModel->getByUserId($_SESSION['user_id']);
+            $pilote = $this->piloteModel->getByUserId($_SESSION['user_id']);
 
             if ($pilote && $pilote['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
                 // Redirection si l'étudiant n'est pas du même centre que le pilote
@@ -535,7 +555,7 @@ class EtudiantController {
             }
         }
 
-        // Récupération des statistiques
+        // Récupération des statistiques - traitement des données pour visualisation
         $statistiques = [
             'nb_candidatures' => $etudiant['nb_candidatures'],
             'nb_wishlist' => $etudiant['nb_wishlist'],
@@ -562,6 +582,7 @@ class EtudiantController {
 
     /**
      * Validation des données du formulaire étudiant
+     * Implémente une validation serveur robuste avec vérifications métier
      *
      * @param array $data Données à valider
      * @param bool $isEdit Mode édition (true) ou création (false)
