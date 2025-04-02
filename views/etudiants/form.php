@@ -93,6 +93,21 @@ $isEdit = isset($etudiant['id']);
                                 <div class="invalid-feedback">Veuillez saisir une adresse email valide.</div>
                             </div>
 
+                            <!-- Centre -->
+                            <div class="mb-3">
+                                <label for="centre_id" class="form-label">Centre <span class="text-danger">*</span></label>
+                                <select class="form-select" id="centre_id" name="centre_id" required>
+                                    <option value="">-- Sélectionner un centre --</option>
+                                    <?php foreach ($centres as $centre): ?>
+                                        <option value="<?php echo $centre['id']; ?>" <?php echo (isset($etudiant['centre_id']) && $etudiant['centre_id'] == $centre['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($centre['nom']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text">Centre auquel l'étudiant est rattaché.</div>
+                                <div class="invalid-feedback">Veuillez sélectionner un centre.</div>
+                            </div>
+
                             <!-- Mot de passe -->
                             <div class="mb-3">
                                 <label for="password" class="form-label">
