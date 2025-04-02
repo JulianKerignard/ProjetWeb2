@@ -32,8 +32,8 @@ include ROOT_PATH . '/views/templates/header.php';
                         <h2>Éditeur du site</h2>
                         <p>Le site <?php echo SITE_NAME; ?> est édité par:</p>
                         <p>
-                            <strong>CESI École d'Ingénieurs</strong><br>
-                            1 Avenue des Stages<br>
+                            <strong>Web4All</strong><br>
+                            4 Allée du Web<br>
                             75000 Paris<br>
                             France<br>
                             Téléphone : +33 1 23 45 67 89<br>
@@ -43,9 +43,9 @@ include ROOT_PATH . '/views/templates/header.php';
                         <h2>Hébergement</h2>
                         <p>
                             Ce site est hébergé par:<br>
-                            <strong>CESI Serveurs</strong><br>
-                            23 Rue du Serveur<br>
-                            75000 Paris<br>
+                            <strong>Microsoft Azure</strong><br>
+                            37/45 37 QUAI DU PRESIDENT ROOSEVELT<br>
+                            92130 ISSY-LES-MOULINEAUX<br>
                             France
                         </p>
 
