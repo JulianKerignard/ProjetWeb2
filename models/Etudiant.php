@@ -5,7 +5,7 @@
  * Implémente les opérations CRUD et les services spécifiques aux étudiants
  * avec optimisations des requêtes et gestion robuste des erreurs.
  *
- * @version 2.1
+ * @version 2.2
  * @author Web4All
  */
 class Etudiant {
@@ -76,9 +76,10 @@ class Etudiant {
         }
 
         try {
-            $query = "SELECT e.*, u.email, u.role
+            $query = "SELECT e.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code
                      FROM {$this->table} e
                      JOIN {$this->usersTable} u ON e.user_id = u.id
+                     LEFT JOIN centres c ON e.centre_id = c.id
                      WHERE e.user_id = :user_id";
 
             $stmt = $this->conn->prepare($query);
@@ -148,11 +149,12 @@ class Etudiant {
             $offset = ($page - 1) * $limit;
 
             // Préparation de la requête SQL de base optimisée
-            $query = "SELECT e.*, u.email, u.role,
+            $query = "SELECT e.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code,
                      (SELECT COUNT(*) FROM {$this->candidaturesTable} c WHERE c.etudiant_id = e.id) as nb_candidatures,
                      (SELECT COUNT(*) FROM {$this->wishlistTable} w WHERE w.etudiant_id = e.id) as nb_wishlist
                      FROM {$this->table} e
-                     LEFT JOIN {$this->usersTable} u ON e.user_id = u.id";
+                     LEFT JOIN {$this->usersTable} u ON e.user_id = u.id
+                     LEFT JOIN centres c ON e.centre_id = c.id";
 
             // Construction des clauses WHERE selon les filtres
             $whereConditions = [];
@@ -173,8 +175,19 @@ class Etudiant {
                 $params[':email'] = '%' . $filters['email'] . '%';
             }
 
+            if (!empty($filters['centre_id'])) {
+                $whereConditions[] = "e.centre_id = :centre_id";
+                $params[':centre_id'] = $filters['centre_id'];
+            }
+
             if (!empty($filters['with_candidatures'])) {
                 $whereConditions[] = "(SELECT COUNT(*) FROM {$this->candidaturesTable} c WHERE c.etudiant_id = e.id) > 0";
+            }
+
+            // Restriction pour les pilotes - voir uniquement les étudiants de leur centre
+            if (isset($filters['pilote_centre_id']) && $filters['pilote_centre_id']) {
+                $whereConditions[] = "e.centre_id = :pilote_centre_id";
+                $params[':pilote_centre_id'] = $filters['pilote_centre_id'];
             }
 
             // Ajout des conditions WHERE si présentes
@@ -213,6 +226,9 @@ class Etudiant {
                     'prenom' => $row['prenom'],
                     'email' => $row['email'],
                     'role' => $row['role'],
+                    'centre_id' => $row['centre_id'],
+                    'centre_nom' => $row['centre_nom'],
+                    'centre_code' => $row['centre_code'],
                     'created_at' => $row['created_at'],
                     'updated_at' => $row['updated_at'],
                     'nb_candidatures' => $row['nb_candidatures'],
@@ -243,7 +259,8 @@ class Etudiant {
         try {
             // Préparation de la requête SQL de base
             $query = "SELECT COUNT(DISTINCT e.id) as total FROM {$this->table} e
-                      LEFT JOIN {$this->usersTable} u ON e.user_id = u.id";
+                      LEFT JOIN {$this->usersTable} u ON e.user_id = u.id
+                      LEFT JOIN centres c ON e.centre_id = c.id";
 
             // Construction des clauses WHERE selon les filtres
             $whereConditions = [];
@@ -264,8 +281,19 @@ class Etudiant {
                 $params[':email'] = '%' . $filters['email'] . '%';
             }
 
+            if (!empty($filters['centre_id'])) {
+                $whereConditions[] = "e.centre_id = :centre_id";
+                $params[':centre_id'] = $filters['centre_id'];
+            }
+
             if (!empty($filters['with_candidatures'])) {
                 $whereConditions[] = "(SELECT COUNT(*) FROM {$this->candidaturesTable} c WHERE c.etudiant_id = e.id) > 0";
+            }
+
+            // Restriction pour les pilotes - voir uniquement les étudiants de leur centre
+            if (isset($filters['pilote_centre_id']) && $filters['pilote_centre_id']) {
+                $whereConditions[] = "e.centre_id = :pilote_centre_id";
+                $params[':pilote_centre_id'] = $filters['pilote_centre_id'];
             }
 
             // Ajout des conditions WHERE si présentes
@@ -492,7 +520,7 @@ class Etudiant {
 
             // 1. Création du compte utilisateur
             $userQuery = "INSERT INTO {$this->usersTable} (email, password, role, created_at)
-                 VALUES (:email, :password, 'etudiant', NOW())";
+                     VALUES (:email, :password, 'etudiant', NOW())";
 
             $userStmt = $this->conn->prepare($userQuery);
             $userStmt->bindParam(':email', $data['email']);
@@ -506,18 +534,20 @@ class Etudiant {
 
             // 2. Création du profil étudiant
             $etudiantQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, centre_id, created_at)
-                     VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
+                         VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
 
             $etudiantStmt = $this->conn->prepare($etudiantQuery);
             $etudiantStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $etudiantStmt->bindParam(':nom', $data['nom']);
             $etudiantStmt->bindParam(':prenom', $data['prenom']);
 
-            // Gestion du centre (peut être NULL)
+            // Gestion du centre (obligatoire)
             if (!empty($data['centre_id'])) {
                 $etudiantStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
             } else {
-                $etudiantStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+                // Si aucun centre n'est spécifié, utiliser le centre par défaut (1)
+                $defaultCentreId = 1;
+                $etudiantStmt->bindParam(':centre_id', $defaultCentreId, PDO::PARAM_INT);
             }
 
             $etudiantStmt->execute();
@@ -567,22 +597,31 @@ class Etudiant {
 
             // 1. Mise à jour du profil étudiant
             $etudiantQuery = "UPDATE {$this->table} SET
-                         nom = :nom,
-                         prenom = :prenom,
-                         centre_id = :centre_id,
-                         updated_at = NOW()
-                         WHERE id = :id";
+                             nom = :nom,
+                             prenom = :prenom,
+                             updated_at = NOW()";
+
+            // Ajouter centre_id seulement s'il est fourni
+            if (isset($data['centre_id'])) {
+                $etudiantQuery .= ", centre_id = :centre_id";
+            }
+
+            $etudiantQuery .= " WHERE id = :id";
 
             $etudiantStmt = $this->conn->prepare($etudiantQuery);
             $etudiantStmt->bindParam(':nom', $data['nom']);
             $etudiantStmt->bindParam(':prenom', $data['prenom']);
             $etudiantStmt->bindParam(':id', $id, PDO::PARAM_INT);
 
-            // Gestion du centre (peut être NULL)
-            if (!empty($data['centre_id'])) {
-                $etudiantStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
-            } else {
-                $etudiantStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            // Lier centre_id seulement s'il est fourni
+            if (isset($data['centre_id'])) {
+                if (empty($data['centre_id'])) {
+                    // Utiliser le centre par défaut si vide
+                    $defaultCentreId = 1;
+                    $etudiantStmt->bindParam(':centre_id', $defaultCentreId, PDO::PARAM_INT);
+                } else {
+                    $etudiantStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
+                }
             }
 
             $etudiantStmt->execute();
@@ -590,9 +629,9 @@ class Etudiant {
             // 2. Mise à jour de l'email utilisateur si fourni
             if (!empty($data['email'])) {
                 $userQuery = "UPDATE {$this->usersTable} SET
-                         email = :email,
-                         updated_at = NOW()
-                         WHERE id = :id";
+                             email = :email,
+                             updated_at = NOW()
+                             WHERE id = :id";
 
                 $userStmt = $this->conn->prepare($userQuery);
                 $userStmt->bindParam(':email', $data['email']);
@@ -604,9 +643,9 @@ class Etudiant {
             // 3. Mise à jour du mot de passe si fourni
             if (!empty($data['password'])) {
                 $userQuery = "UPDATE {$this->usersTable} SET
-                         password = :password,
-                         updated_at = NOW()
-                         WHERE id = :id";
+                             password = :password,
+                             updated_at = NOW()
+                             WHERE id = :id";
 
                 $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
 
@@ -745,7 +784,9 @@ class Etudiant {
             $stmt = $this->conn->prepare($query);
 
             if ($centreId === null) {
-                $stmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+                // Si aucun centre n'est spécifié, utiliser le centre par défaut (1)
+                $defaultCentreId = 1;
+                $stmt->bindParam(':centre_id', $defaultCentreId, PDO::PARAM_INT);
             } else {
                 $stmt->bindParam(':centre_id', $centreId, PDO::PARAM_INT);
             }
@@ -772,9 +813,10 @@ class Etudiant {
         }
 
         try {
-            $query = "SELECT e.id, e.nom, e.prenom, e.created_at, u.email
+            $query = "SELECT e.id, e.nom, e.prenom, e.created_at, u.email, c.nom as centre_nom
                       FROM {$this->table} e
                       LEFT JOIN {$this->usersTable} u ON e.user_id = u.id
+                      LEFT JOIN centres c ON e.centre_id = c.id
                       ORDER BY e.created_at DESC
                       LIMIT :limit";
 
@@ -829,9 +871,10 @@ class Etudiant {
             $statistics['avg_candidatures'] = round((float)$row['avg_candidatures'], 1);
 
             // Étudiants les plus actifs (par nombre de candidatures)
-            $activeQuery = "SELECT e.id, e.nom, e.prenom, COUNT(c.id) as num_candidatures
+            $activeQuery = "SELECT e.id, e.nom, e.prenom, c.nom as centre_nom, COUNT(c.id) as num_candidatures
                            FROM {$this->table} e
                            INNER JOIN {$this->candidaturesTable} c ON e.id = c.etudiant_id
+                           LEFT JOIN centres c ON e.centre_id = c.id
                            GROUP BY e.id
                            ORDER BY num_candidatures DESC
                            LIMIT 5";
@@ -845,6 +888,7 @@ class Etudiant {
                     'id' => $row['id'],
                     'nom' => $row['nom'],
                     'prenom' => $row['prenom'],
+                    'centre_nom' => $row['centre_nom'],
                     'num_candidatures' => (int)$row['num_candidatures']
                 ];
             }
@@ -869,9 +913,10 @@ class Etudiant {
      * @param int $userId ID de l'utilisateur
      * @param string $nom Nom de l'étudiant (facultatif)
      * @param string $prenom Prénom de l'étudiant (facultatif)
+     * @param int|null $centreId ID du centre (facultatif)
      * @return int|false ID du profil étudiant créé ou false en cas d'échec
      */
-    public function createProfileForUser($userId, $nom = 'Nom', $prenom = 'Prenom') {
+    public function createProfileForUser($userId, $nom = 'Nom', $prenom = 'Prenom', $centreId = null) {
         // Mode dégradé - retourne false
         if ($this->dbError) {
             return false;
@@ -903,14 +948,20 @@ class Etudiant {
                 return $existingProfile['id'];
             }
 
+            // Utiliser le centre par défaut si aucun n'est spécifié
+            if ($centreId === null) {
+                $centreId = 1; // Centre par défaut
+            }
+
             // Création du profil étudiant
-            $createQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, created_at)
-                           VALUES (:user_id, :nom, :prenom, NOW())";
+            $createQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, centre_id, created_at)
+                           VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
 
             $createStmt = $this->conn->prepare($createQuery);
             $createStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $createStmt->bindParam(':nom', $nom);
             $createStmt->bindParam(':prenom', $prenom);
+            $createStmt->bindParam(':centre_id', $centreId, PDO::PARAM_INT);
             $createStmt->execute();
 
             $etudiantId = $this->conn->lastInsertId();
@@ -963,7 +1014,10 @@ class Etudiant {
                 $prenom = ucfirst($parts[0] ?? 'Prenom');
                 $nom = ucfirst($parts[1] ?? 'Nom');
 
-                $result = $this->createProfileForUser($user['id'], $nom, $prenom);
+                // Centre par défaut (1)
+                $defaultCentreId = 1;
+
+                $result = $this->createProfileForUser($user['id'], $nom, $prenom, $defaultCentreId);
 
                 if ($result) {
                     $repairs++;

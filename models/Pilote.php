@@ -5,7 +5,7 @@
  * Implémente les opérations CRUD et les services spécifiques aux pilotes
  * avec optimisations des requêtes et gestion robuste des erreurs.
  *
- * @version 2.0
+ * @version 2.1
  * @author Web4All
  */
 class Pilote {
@@ -311,11 +311,13 @@ class Pilote {
             $piloteStmt->bindParam(':nom', $data['nom']);
             $piloteStmt->bindParam(':prenom', $data['prenom']);
 
-            // Gestion du centre (peut être NULL)
+            // Gestion du centre (obligatoire)
             if (!empty($data['centre_id'])) {
                 $piloteStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
             } else {
-                $piloteStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+                // Si aucun centre n'est spécifié, on utilise le centre par défaut (1)
+                $defaultCentreId = 1;
+                $piloteStmt->bindParam(':centre_id', $defaultCentreId, PDO::PARAM_INT);
             }
 
             $piloteStmt->execute();
@@ -376,11 +378,13 @@ class Pilote {
             $piloteStmt->bindParam(':prenom', $data['prenom']);
             $piloteStmt->bindParam(':id', $id, PDO::PARAM_INT);
 
-            // Gestion du centre (peut être NULL)
+            // Gestion du centre (obligatoire)
             if (!empty($data['centre_id'])) {
                 $piloteStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
             } else {
-                $piloteStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+                // Si aucun centre n'est spécifié, on utilise le centre par défaut (1)
+                $defaultCentreId = 1;
+                $piloteStmt->bindParam(':centre_id', $defaultCentreId, PDO::PARAM_INT);
             }
 
             $piloteStmt->execute();
@@ -431,7 +435,7 @@ class Pilote {
      * Met à jour le centre d'un pilote
      *
      * @param int $piloteId ID du pilote
-     * @param int|null $centreId ID du centre (null pour supprimer l'association)
+     * @param int|null $centreId ID du centre (null pour le centre par défaut)
      * @return bool
      */
     public function updateCentre($piloteId, $centreId) {
@@ -445,7 +449,9 @@ class Pilote {
             $stmt = $this->conn->prepare($query);
 
             if ($centreId === null) {
-                $stmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+                // Si aucun centre n'est spécifié, on utilise le centre par défaut (1)
+                $defaultCentreId = 1;
+                $stmt->bindParam(':centre_id', $defaultCentreId, PDO::PARAM_INT);
             } else {
                 $stmt->bindParam(':centre_id', $centreId, PDO::PARAM_INT);
             }
@@ -473,30 +479,25 @@ class Pilote {
         try {
             // Récupération du centre du pilote
             $pilote = $this->getById($piloteId);
-            $centrePilote = $pilote['centre_id'];
-
-            // Base de la requête
-            $query = "SELECT e.*, u.email, c.nom as centre_nom, c.code as centre_code, pe.date_attribution
-              FROM etudiants e
-              JOIN pilote_etudiant pe ON e.id = pe.etudiant_id
-              JOIN utilisateurs u ON e.user_id = u.id
-              LEFT JOIN centres c ON e.centre_id = c.id
-              WHERE pe.pilote_id = :pilote_id";
-
-            // Si le pilote est assigné à un centre, ne montrer que les étudiants de ce centre
-            if ($centrePilote) {
-                $query .= " AND (e.centre_id = :centre_id OR e.centre_id IS NULL)";
+            if (!$pilote || !$pilote['centre_id']) {
+                return [];
             }
 
-            $query .= " ORDER BY e.nom, e.prenom";
+            $centrePilote = $pilote['centre_id'];
+
+            // Base de la requête - Filtre uniquement par centre du pilote
+            $query = "SELECT e.*, u.email, c.nom as centre_nom, c.code as centre_code, pe.date_attribution
+                  FROM etudiants e
+                  JOIN pilote_etudiant pe ON e.id = pe.etudiant_id
+                  JOIN utilisateurs u ON e.user_id = u.id
+                  JOIN centres c ON e.centre_id = c.id
+                  WHERE pe.pilote_id = :pilote_id
+                  AND e.centre_id = :centre_id
+                  ORDER BY e.nom, e.prenom";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
-
-            if ($centrePilote) {
-                $stmt->bindParam(':centre_id', $centrePilote, PDO::PARAM_INT);
-            }
-
+            $stmt->bindParam(':centre_id', $centrePilote, PDO::PARAM_INT);
             $stmt->execute();
 
             $etudiants = [];
@@ -521,7 +522,7 @@ class Pilote {
     }
 
     /**
-     * Attribue un étudiant à un pilote s'ils font partie du même centre
+     * Attribue un étudiant à un pilote uniquement s'ils font partie du même centre
      *
      * @param int $piloteId ID du pilote
      * @param int $etudiantId ID de l'étudiant
@@ -537,6 +538,10 @@ class Pilote {
             // Vérifier si l'étudiant et le pilote sont du même centre
             $pilote = $this->getById($piloteId);
 
+            if (!$pilote || !$pilote['centre_id']) {
+                return 'not_same_centre';
+            }
+
             // Récupérer le centre de l'étudiant
             $etudiantQuery = "SELECT centre_id FROM etudiants WHERE id = :etudiant_id";
             $etudiantStmt = $this->conn->prepare($etudiantQuery);
@@ -546,25 +551,17 @@ class Pilote {
             if ($etudiantStmt->rowCount() > 0) {
                 $etudiant = $etudiantStmt->fetch(PDO::FETCH_ASSOC);
 
-                // Si le pilote a un centre défini et que soit l'étudiant n'a pas de centre soit son centre est différent
-                if ($pilote['centre_id'] && ($etudiant['centre_id'] === null || $etudiant['centre_id'] != $pilote['centre_id'])) {
-                    // Si l'étudiant n'a pas de centre, on lui assigne celui du pilote
-                    if ($etudiant['centre_id'] === null) {
-                        $updateQuery = "UPDATE etudiants SET centre_id = :centre_id WHERE id = :etudiant_id";
-                        $updateStmt = $this->conn->prepare($updateQuery);
-                        $updateStmt->bindParam(':centre_id', $pilote['centre_id'], PDO::PARAM_INT);
-                        $updateStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
-                        $updateStmt->execute();
-                    } else {
-                        // Les centres sont différents, on refuse l'attribution
-                        return 'not_same_centre';
-                    }
+                // Vérifier que l'étudiant a un centre et qu'il correspond à celui du pilote
+                if (!$etudiant['centre_id'] || $etudiant['centre_id'] != $pilote['centre_id']) {
+                    return 'not_same_centre';
                 }
+            } else {
+                return false; // Étudiant non trouvé
             }
 
             // Vérifier si l'attribution existe déjà
             $checkQuery = "SELECT COUNT(*) as count FROM pilote_etudiant 
-                   WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
+                       WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
             $checkStmt = $this->conn->prepare($checkQuery);
             $checkStmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
             $checkStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
@@ -584,7 +581,7 @@ class Pilote {
 
             // Créer la nouvelle attribution
             $insertQuery = "INSERT INTO pilote_etudiant (pilote_id, etudiant_id, date_attribution)
-                    VALUES (:pilote_id, :etudiant_id, NOW())";
+                        VALUES (:pilote_id, :etudiant_id, NOW())";
             $insertStmt = $this->conn->prepare($insertQuery);
             $insertStmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
             $insertStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
@@ -717,7 +714,7 @@ class Pilote {
     }
 
     /**
-     * Récupère les étudiants disponibles pour un pilote (uniquement du même centre)
+     * Récupère les étudiants disponibles pour un pilote (uniquement ceux du même centre)
      *
      * @param int $piloteId ID du pilote
      * @param int $limit Nombre maximum d'étudiants à récupérer
@@ -732,31 +729,22 @@ class Pilote {
         try {
             // Récupérer le centre du pilote
             $pilote = $this->getById($piloteId);
-            if (!$pilote) {
+            if (!$pilote || !$pilote['centre_id']) {
                 return [];
             }
 
             $centrePilote = $pilote['centre_id'];
 
-            // Base de la requête pour obtenir tous les étudiants
+            // Récupérer uniquement les étudiants du même centre que le pilote
             $query = "SELECT e.id, e.nom, e.prenom, u.email, c.nom as centre_nom
-                  FROM etudiants e
-                  JOIN utilisateurs u ON e.user_id = u.id
-                  LEFT JOIN centres c ON e.centre_id = c.id";
-
-            // Si le pilote est assigné à un centre, ne montrer que les étudiants de ce centre
-            if ($centrePilote) {
-                $query .= " WHERE e.centre_id = :centre_id";
-            }
-
-            $query .= " ORDER BY e.nom, e.prenom LIMIT :limit";
+                      FROM etudiants e
+                      JOIN utilisateurs u ON e.user_id = u.id
+                      JOIN centres c ON e.centre_id = c.id
+                      WHERE e.centre_id = :centre_id
+                      ORDER BY e.nom, e.prenom LIMIT :limit";
 
             $stmt = $this->conn->prepare($query);
-
-            if ($centrePilote) {
-                $stmt->bindParam(':centre_id', $centrePilote, PDO::PARAM_INT);
-            }
-
+            $stmt->bindParam(':centre_id', $centrePilote, PDO::PARAM_INT);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
 
