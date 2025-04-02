@@ -137,11 +137,17 @@ class EtudiantController {
             'nom' => '',
             'prenom' => '',
             'email' => '',
-            'password' => ''
+            'password' => '',
+            'centre_id' => ''
         ];
 
         $errors = [];
         $success = false;
+
+        // Chargement du modèle des centres pour le select
+        require_once MODELS_PATH . '/Centre.php';
+        $centreModel = new Centre();
+        $centres = $centreModel->getAllForSelect();
 
         // Traitement du formulaire de création
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -150,7 +156,8 @@ class EtudiantController {
                 'nom' => isset($_POST['nom']) ? cleanData($_POST['nom']) : '',
                 'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
                 'email' => isset($_POST['email']) ? cleanData($_POST['email']) : '',
-                'password' => isset($_POST['password']) ? $_POST['password'] : ''
+                'password' => isset($_POST['password']) ? $_POST['password'] : '',
+                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : null
             ];
 
             // Validation des données
@@ -200,6 +207,11 @@ class EtudiantController {
             redirect(url('etudiants'));
         }
 
+        // Chargement du modèle des centres pour le select
+        require_once MODELS_PATH . '/Centre.php';
+        $centreModel = new Centre();
+        $centres = $centreModel->getAllForSelect();
+
         $errors = [];
         $success = false;
 
@@ -210,7 +222,8 @@ class EtudiantController {
                 'nom' => isset($_POST['nom']) ? cleanData($_POST['nom']) : '',
                 'prenom' => isset($_POST['prenom']) ? cleanData($_POST['prenom']) : '',
                 'email' => isset($_POST['email']) ? cleanData($_POST['email']) : '',
-                'password' => isset($_POST['password']) ? $_POST['password'] : ''
+                'password' => isset($_POST['password']) ? $_POST['password'] : '',
+                'centre_id' => isset($_POST['centre_id']) && !empty($_POST['centre_id']) ? (int)$_POST['centre_id'] : null
             ];
 
             // Validation des données (mode édition)
@@ -366,6 +379,13 @@ class EtudiantController {
                 $errors[] = "Le mot de passe est obligatoire.";
             } elseif (strlen($data['password']) < 6) {
                 $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
+            }
+        }
+
+        // Validation du centre (optionnel)
+        if (isset($data['centre_id']) && !empty($data['centre_id'])) {
+            if (!is_numeric($data['centre_id'])) {
+                $errors[] = "Le centre sélectionné n'est pas valide.";
             }
         }
 

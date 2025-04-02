@@ -155,3 +155,23 @@ CREATE INDEX idx_offres_dates ON offres(date_debut, date_fin);
 CREATE INDEX idx_candidatures_etudiant ON candidatures(etudiant_id);
 CREATE INDEX idx_candidatures_offre ON candidatures(offre_id);
 CREATE INDEX idx_wishlists_etudiant ON wishlists(etudiant_id);
+
+-- Table des centres
+CREATE TABLE centres (
+                         id INT AUTO_INCREMENT PRIMARY KEY,
+                         nom VARCHAR(100) NOT NULL,
+                         code VARCHAR(20) NOT NULL UNIQUE,
+                         adresse TEXT,
+                         created_at DATETIME NOT NULL,
+                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                         INDEX idx_centres_nom (nom),
+                         INDEX idx_centres_code (code)
+) ENGINE=InnoDB;
+
+-- Insertion des centres par défaut
+INSERT INTO centres (nom, code, adresse, created_at) VALUES
+                                                         ('Paris', 'PAR', '93 Boulevard de la Seine, 92000 Paris', NOW()),
+                                                         ('Lyon', 'LYO', '19 Avenue Guy de Collongue, 69130 Écully', NOW()),
+                                                         ('Arras', 'ARR', '7 Rue Diderot, 62000 Arras', NOW()),
+                                                         ('Strasbourg', 'STR', '2 Allée des Foulons, 67380 Lingolsheim', NOW()),
+                                                         ('Nancy', 'NAN', '2 Boulevard Henri Becquerel, 57970 Yutz', NOW());

@@ -395,6 +395,125 @@ class Pilote {
     }
 
     /**
+     * Récupère les étudiants assignés à un pilote
+     *
+     * @param int $piloteId ID du pilote
+     * @return array Liste des étudiants assignés
+     */
+    public function getEtudiantsAssignes($piloteId) {
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
+            return [];
+        }
+
+        try {
+            $query = "SELECT e.*, u.email, c.nom as centre_nom, c.code as centre_code, pe.date_attribution
+                  FROM etudiants e
+                  JOIN pilote_etudiant pe ON e.id = pe.etudiant_id
+                  JOIN utilisateurs u ON e.user_id = u.id
+                  LEFT JOIN centres c ON e.centre_id = c.id
+                  WHERE pe.pilote_id = :pilote_id
+                  ORDER BY e.nom, e.prenom";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $etudiants = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $etudiants[] = [
+                    'id' => $row['id'],
+                    'nom' => $row['nom'],
+                    'prenom' => $row['prenom'],
+                    'email' => $row['email'],
+                    'centre_id' => $row['centre_id'],
+                    'centre_nom' => $row['centre_nom'],
+                    'centre_code' => $row['centre_code'],
+                    'date_attribution' => $row['date_attribution']
+                ];
+            }
+
+            return $etudiants;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération des étudiants assignés: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Attribue un étudiant à un pilote
+     *
+     * @param int $piloteId ID du pilote
+     * @param int $etudiantId ID de l'étudiant
+     * @return bool
+     */
+    public function assignerEtudiant($piloteId, $etudiantId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            // Vérifier si l'attribution existe déjà
+            $checkQuery = "SELECT COUNT(*) as count FROM pilote_etudiant 
+                       WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
+            $checkStmt = $this->conn->prepare($checkQuery);
+            $checkStmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
+            $checkStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            $checkStmt->execute();
+            $row = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row['count'] > 0) {
+                // L'attribution existe déjà
+                return true;
+            }
+
+            // Supprimer toute attribution existante pour cet étudiant
+            $deleteQuery = "DELETE FROM pilote_etudiant WHERE etudiant_id = :etudiant_id";
+            $deleteStmt = $this->conn->prepare($deleteQuery);
+            $deleteStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            $deleteStmt->execute();
+
+            // Créer la nouvelle attribution
+            $insertQuery = "INSERT INTO pilote_etudiant (pilote_id, etudiant_id, date_attribution)
+                        VALUES (:pilote_id, :etudiant_id, NOW())";
+            $insertStmt = $this->conn->prepare($insertQuery);
+            $insertStmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
+            $insertStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            return $insertStmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de l'attribution de l'étudiant: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retire l'attribution d'un étudiant à un pilote
+     *
+     * @param int $piloteId ID du pilote
+     * @param int $etudiantId ID de l'étudiant
+     * @return bool
+     */
+    public function retirerEtudiant($piloteId, $etudiantId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "DELETE FROM pilote_etudiant 
+                  WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
+            $stmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors du retrait de l'attribution de l'étudiant: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Supprime un pilote et son compte utilisateur associé
      *
      * @param int $id ID du pilote

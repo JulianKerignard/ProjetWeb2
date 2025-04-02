@@ -269,6 +269,251 @@ class PiloteController {
     }
 
     /**
+     * Affiche les étudiants assignés à un pilote
+     */
+    public function etudiants() {
+        // Récupération de l'ID du pilote
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+        if ($id <= 0) {
+            // Redirection vers la liste si ID invalide
+            redirect(url('pilotes'));
+        }
+
+        // Récupération des détails du pilote
+        $pilote = $this->piloteModel->getById($id);
+
+        if (!$pilote) {
+            // Journalisation de l'erreur d'accès à un pilote inexistant
+            $this->logManager->warning(
+                "Tentative d'accès à un pilote inexistant",
+                $_SESSION['email'],
+                ['pilote_id' => $id]
+            );
+
+            // Redirection vers la liste si pilote non trouvé
+            redirect(url('pilotes'));
+        }
+
+        // Récupération des étudiants assignés au pilote
+        $etudiants = $this->piloteModel->getEtudiantsAssignes($id);
+
+        // Journalisation de la consultation
+        $this->logManager->info(
+            "Consultation des étudiants assignés à un pilote",
+            $_SESSION['email'],
+            [
+                'pilote_id' => $id,
+                'pilote_nom' => $pilote['nom'],
+                'nb_etudiants' => count($etudiants)
+            ]
+        );
+
+        // Définir le titre de la page
+        $pageTitle = "Étudiants assignés à " . $pilote['prenom'] . ' ' . $pilote['nom'];
+
+        // Chargement de la vue
+        include VIEWS_PATH . '/pilotes/etudiants.php';
+    }
+
+    /**
+     * Formulaire d'attribution d'étudiants à un pilote
+     */
+    public function attribuerEtudiants() {
+        // Vérification des droits d'accès (admin uniquement)
+        if (!isAdmin()) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative d'attribution d'étudiants sans autorisation",
+                $_SESSION['email']
+            );
+
+            // Redirection vers la liste si droits insuffisants
+            redirect(url('pilotes'));
+        }
+
+        // Récupération de l'ID du pilote
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+        if ($id <= 0) {
+            // Redirection vers la liste si ID invalide
+            redirect(url('pilotes'));
+        }
+
+        // Récupération des détails du pilote
+        $pilote = $this->piloteModel->getById($id);
+
+        if (!$pilote) {
+            // Journalisation de l'erreur d'accès à un pilote inexistant
+            $this->logManager->warning(
+                "Tentative d'attribution d'étudiants à un pilote inexistant",
+                $_SESSION['email'],
+                ['pilote_id' => $id]
+            );
+
+            // Redirection vers la liste si pilote non trouvé
+            redirect(url('pilotes'));
+        }
+
+        // Récupération des étudiants déjà assignés
+        $etudiantsAssignes = $this->piloteModel->getEtudiantsAssignes($id);
+        $etudiantsAssignesIds = array_column($etudiantsAssignes, 'id');
+
+        // Charger le modèle étudiant pour récupérer tous les étudiants
+        require_once MODELS_PATH . '/Etudiant.php';
+        $etudiantModel = new Etudiant();
+
+        // Récupération de tous les étudiants (pour le select)
+        $tousLesEtudiants = $etudiantModel->getAll(1, 1000); // Limite élevée pour récupérer tous les étudiants
+
+        $errors = [];
+        $success = false;
+
+        // Traitement de l'attribution d'étudiants
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_POST['etudiant_ids']) && is_array($_POST['etudiant_ids'])) {
+                $etudiantIds = array_map('intval', $_POST['etudiant_ids']);
+
+                // Supprimer les attributions existantes
+                foreach ($etudiantsAssignesIds as $etudiantId) {
+                    if (!in_array($etudiantId, $etudiantIds)) {
+                        $this->piloteModel->retirerEtudiant($id, $etudiantId);
+                    }
+                }
+
+                // Ajouter les nouvelles attributions
+                $success = true;
+                foreach ($etudiantIds as $etudiantId) {
+                    $result = $this->piloteModel->assignerEtudiant($id, $etudiantId);
+                    if (!$result) {
+                        $success = false;
+                        $errors[] = "Erreur lors de l'attribution de l'étudiant #" . $etudiantId;
+                    }
+                }
+
+                if ($success) {
+                    // Journalisation du succès
+                    $this->logManager->success(
+                        "Attribution d'étudiants à un pilote",
+                        $_SESSION['email'],
+                        [
+                            'pilote_id' => $id,
+                            'pilote_nom' => $pilote['nom'],
+                            'nb_etudiants' => count($etudiantIds)
+                        ]
+                    );
+
+                    // Message de succès
+                    $_SESSION['flash_message'] = [
+                        'type' => 'success',
+                        'message' => "Les étudiants ont été attribués avec succès."
+                    ];
+
+                    // Redirection vers la liste des étudiants du pilote
+                    redirect(url('pilotes', 'etudiants', ['id' => $id]));
+                } else {
+                    // Journalisation de l'échec
+                    $this->logManager->error(
+                        "Échec d'attribution d'étudiants à un pilote",
+                        $_SESSION['email'],
+                        [
+                            'pilote_id' => $id,
+                            'pilote_nom' => $pilote['nom'],
+                            'errors' => $errors
+                        ]
+                    );
+                }
+            } else {
+                // Aucun étudiant sélectionné, supprimer toutes les attributions
+                foreach ($etudiantsAssignesIds as $etudiantId) {
+                    $this->piloteModel->retirerEtudiant($id, $etudiantId);
+                }
+
+                // Message de succès
+                $_SESSION['flash_message'] = [
+                    'type' => 'success',
+                    'message' => "Toutes les attributions d'étudiants ont été supprimées."
+                ];
+
+                // Redirection vers la liste des étudiants du pilote
+                redirect(url('pilotes', 'etudiants', ['id' => $id]));
+            }
+        }
+
+        // Définir le titre de la page
+        $pageTitle = "Attribuer des étudiants à " . $pilote['prenom'] . ' ' . $pilote['nom'];
+
+        // Chargement de la vue
+        include VIEWS_PATH . '/pilotes/attribuer_etudiants.php';
+    }
+
+    /**
+     * Supprime l'attribution d'un étudiant à un pilote
+     */
+    public function retirerEtudiant() {
+        // Vérification des droits d'accès (admin uniquement)
+        if (!isAdmin()) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de retrait d'étudiant sans autorisation",
+                $_SESSION['email']
+            );
+
+            // Redirection vers la liste si droits insuffisants
+            redirect(url('pilotes'));
+        }
+
+        // Récupération des IDs
+        $piloteId = isset($_GET['pilote_id']) ? (int)$_GET['pilote_id'] : 0;
+        $etudiantId = isset($_GET['etudiant_id']) ? (int)$_GET['etudiant_id'] : 0;
+
+        if ($piloteId <= 0 || $etudiantId <= 0) {
+            // Redirection vers la liste si IDs invalides
+            redirect(url('pilotes'));
+        }
+
+        // Suppression de l'attribution
+        $result = $this->piloteModel->retirerEtudiant($piloteId, $etudiantId);
+
+        if ($result) {
+            // Journalisation du succès
+            $this->logManager->success(
+                "Retrait de l'attribution d'un étudiant à un pilote",
+                $_SESSION['email'],
+                [
+                    'pilote_id' => $piloteId,
+                    'etudiant_id' => $etudiantId
+                ]
+            );
+
+            // Message de succès
+            $_SESSION['flash_message'] = [
+                'type' => 'success',
+                'message' => "L'étudiant a été retiré avec succès."
+            ];
+        } else {
+            // Journalisation de l'échec
+            $this->logManager->error(
+                "Échec du retrait de l'attribution d'un étudiant à un pilote",
+                $_SESSION['email'],
+                [
+                    'pilote_id' => $piloteId,
+                    'etudiant_id' => $etudiantId
+                ]
+            );
+
+            // Message d'erreur
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Une erreur est survenue lors du retrait de l'étudiant."
+            ];
+        }
+
+        // Redirection vers la liste des étudiants du pilote
+        redirect(url('pilotes', 'etudiants', ['id' => $piloteId]));
+    }
+
+    /**
      * Validation des données du formulaire pilote
      *
      * @param array $data Données à valider

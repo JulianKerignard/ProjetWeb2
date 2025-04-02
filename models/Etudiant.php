@@ -306,12 +306,13 @@ class Etudiant {
 
         try {
             // Requête optimisée avec sous-requêtes pour les agrégations
-            $query = "SELECT e.*, u.email, u.role,
-                     (SELECT COUNT(*) FROM {$this->candidaturesTable} c WHERE c.etudiant_id = e.id) as nb_candidatures,
-                     (SELECT COUNT(*) FROM {$this->wishlistTable} w WHERE w.etudiant_id = e.id) as nb_wishlist
-                     FROM {$this->table} e
-                     LEFT JOIN {$this->usersTable} u ON e.user_id = u.id
-                     WHERE e.id = :id";
+            $query = "SELECT e.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code,
+                 (SELECT COUNT(*) FROM {$this->candidaturesTable} c WHERE c.etudiant_id = e.id) as nb_candidatures,
+                 (SELECT COUNT(*) FROM {$this->wishlistTable} w WHERE w.etudiant_id = e.id) as nb_wishlist
+                 FROM {$this->table} e
+                 LEFT JOIN {$this->usersTable} u ON e.user_id = u.id
+                 LEFT JOIN centres c ON e.centre_id = c.id
+                 WHERE e.id = :id";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
@@ -329,6 +330,9 @@ class Etudiant {
                 'prenom' => $row['prenom'],
                 'email' => $row['email'],
                 'role' => $row['role'],
+                'centre_id' => $row['centre_id'],
+                'centre_nom' => $row['centre_nom'],
+                'centre_code' => $row['centre_code'],
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
                 'nb_candidatures' => $row['nb_candidatures'],
@@ -341,9 +345,46 @@ class Etudiant {
             // Récupération des offres en wishlist
             $etudiant['wishlist'] = $this->getWishlistForEtudiant($id);
 
+            // Récupération du pilote assigné
+            $etudiant['pilote'] = $this->getPiloteAssigne($id);
+
             return $etudiant;
         } catch (PDOException $e) {
             error_log("Erreur lors de la récupération de l'étudiant: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupère le pilote assigné à un étudiant
+     *
+     * @param int $etudiantId ID de l'étudiant
+     * @return array|false Données du pilote ou false si non assigné
+     */
+    public function getPiloteAssigne($etudiantId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "SELECT p.id, p.nom, p.prenom, u.email, pe.date_attribution
+                  FROM pilotes p
+                  JOIN pilote_etudiant pe ON p.id = pe.pilote_id
+                  JOIN utilisateurs u ON p.user_id = u.id
+                  WHERE pe.etudiant_id = :etudiant_id";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() == 0) {
+                return false;
+            }
+
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération du pilote assigné: " . $e->getMessage());
             return false;
         }
     }
@@ -451,7 +492,7 @@ class Etudiant {
 
             // 1. Création du compte utilisateur
             $userQuery = "INSERT INTO {$this->usersTable} (email, password, role, created_at)
-                         VALUES (:email, :password, 'etudiant', NOW())";
+                     VALUES (:email, :password, 'etudiant', NOW())";
 
             $userStmt = $this->conn->prepare($userQuery);
             $userStmt->bindParam(':email', $data['email']);
@@ -464,13 +505,20 @@ class Etudiant {
             $userId = $this->conn->lastInsertId();
 
             // 2. Création du profil étudiant
-            $etudiantQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, created_at)
-                             VALUES (:user_id, :nom, :prenom, NOW())";
+            $etudiantQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, centre_id, created_at)
+                         VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
 
             $etudiantStmt = $this->conn->prepare($etudiantQuery);
             $etudiantStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $etudiantStmt->bindParam(':nom', $data['nom']);
             $etudiantStmt->bindParam(':prenom', $data['prenom']);
+
+            // Gestion du centre (peut être NULL)
+            if (!empty($data['centre_id'])) {
+                $etudiantStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
+            } else {
+                $etudiantStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            }
 
             $etudiantStmt->execute();
             $etudiantId = $this->conn->lastInsertId();
@@ -637,6 +685,71 @@ class Etudiant {
             return false;
         }
     }
+
+    /**
+     * Récupère le centre associé à un étudiant
+     *
+     * @param int $etudiantId ID de l'étudiant
+     * @return array|false Données du centre ou false si non trouvé
+     */
+    public function getCentre($etudiantId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "SELECT c.* 
+                  FROM centres c
+                  JOIN {$this->table} e ON c.id = e.centre_id
+                  WHERE e.id = :etudiant_id";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() == 0) {
+                return false;
+            }
+
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération du centre de l'étudiant: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Met à jour le centre d'un étudiant
+     *
+     * @param int $etudiantId ID de l'étudiant
+     * @param int|null $centreId ID du centre
+     * @return bool
+     */
+    public function updateCentre($etudiantId, $centreId) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "UPDATE {$this->table} SET centre_id = :centre_id WHERE id = :etudiant_id";
+            $stmt = $this->conn->prepare($query);
+
+            if ($centreId === null) {
+                $stmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindParam(':centre_id', $centreId, PDO::PARAM_INT);
+            }
+
+            $stmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la mise à jour du centre de l'étudiant: " . $e->getMessage());
+            return false;
+        }
+    }
+
 
     /**
      * Récupère les derniers étudiants inscrits

@@ -175,6 +175,15 @@ switch ($page) {
             case 'detail':
                 $controller->detail();
                 break;
+            case 'etudiants':
+                $controller->etudiants();
+                break;
+            case 'attribuer-etudiants':
+                $controller->attribuerEtudiants();
+                break;
+            case 'retirer-etudiant':
+                $controller->retirerEtudiant();
+                break;
             default:
                 $controller->index();
                 break;
@@ -203,6 +212,31 @@ switch ($page) {
                 break;
             case 'statistiques':
                 $controller->statistiques();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
+    // Après le case 'etudiants':
+
+    case 'centres':
+        require_once 'controllers/CentreController.php';
+        $controller = new CentreController();
+
+        switch ($action) {
+            case 'detail':
+                $controller->detail();
+                break;
+            case 'creer':
+                $controller->creer();
+                break;
+            case 'modifier':
+                $controller->modifier();
+                break;
+            case 'supprimer':
+                $controller->supprimer();
                 break;
             default:
                 $controller->index();
