@@ -144,6 +144,10 @@ footer .social-link:hover {
     padding: 2rem 0;
 }
 
+.btn-primary:hover {
+    color: white !important;
+}
+
 /* Styles responsifs pour les écrans plus petits */
 @media (max-width: 768px) {
     .hero-section {

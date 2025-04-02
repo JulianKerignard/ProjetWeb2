@@ -33,7 +33,10 @@ switch ($page) {
         // Page d'accueil
         include ROOT_PATH . '/views/accueil.php';
         break;
-
+    case 'mentions-legales':
+        // Page mentions légales
+        include ROOT_PATH . '/views/legal/mentions-legales.php';
+        break;
     case 'auth':
         require_once 'controllers/AuthController.php';
         $controller = new AuthController();
