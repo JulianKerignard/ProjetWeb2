@@ -42,7 +42,6 @@ if (!defined('ROOT_PATH')) {
                         <li><a href="<?php echo url('candidatures', 'mes-candidatures'); ?>"><i class="fas fa-chevron-right me-2"></i>Mes candidatures</a></li>
                         <li><a href="<?php echo url('candidatures', 'afficher-wishlist'); ?>"><i class="fas fa-chevron-right me-2"></i>Ma liste de souhaits</a></li>
                     <?php endif; ?>
-                    <li><a href="#"><i class="fas fa-chevron-right me-2"></i>Mentions légales</a></li>
                 </ul>
             </div>
 
