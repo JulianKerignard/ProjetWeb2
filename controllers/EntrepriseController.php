@@ -1,10 +1,13 @@
 <?php
 /**
  * Contrôleur pour la gestion des entreprises
- * Implémente les fonctionnalités CRUD et métier
+ * Implémente les fonctionnalités CRUD et métier avec journalisation avancée
+ *
+ * @version 2.0
  */
 class EntrepriseController {
     private $entrepriseModel;
+    private $logManager;
 
     /**
      * Constructeur - Initialise les modèles nécessaires
@@ -12,13 +15,23 @@ class EntrepriseController {
     public function __construct() {
         // Chargement des modèles requis
         require_once MODELS_PATH . '/Entreprise.php';
+        require_once ROOT_PATH . '/includes/LogManager.php';
+
         $this->entrepriseModel = new Entreprise();
+        $this->logManager = LogManager::getInstance();
 
         // Vérification d'authentification pour certaines actions
         $publicActions = ['index', 'detail'];
         $action = isset($_GET['action']) ? $_GET['action'] : 'index';
 
         if (!in_array($action, $publicActions) && !isLoggedIn()) {
+            // Journalisation de la tentative d'accès non authentifiée
+            $this->logManager->warning(
+                "Tentative d'accès non authentifiée à une action protégée: entreprises/{$action}",
+                null,
+                ['ip' => $_SERVER['REMOTE_ADDR']]
+            );
+
             // Redirection vers la page de connexion si non authentifié
             redirect(url('auth', 'login'));
         }
@@ -47,6 +60,19 @@ class EntrepriseController {
         // Comptage du nombre total d'entreprises pour la pagination
         $totalEntreprises = $this->entrepriseModel->countAll($filters);
 
+        // Journalisation de la consultation des entreprises
+        if (isLoggedIn()) {
+            $this->logManager->info(
+                "Consultation de la liste des entreprises",
+                $_SESSION['email'],
+                [
+                    'page' => $page,
+                    'filters' => $filters,
+                    'results_count' => count($entreprises)
+                ]
+            );
+        }
+
         // Définir le titre de la page
         $pageTitle = "Liste des entreprises";
 
@@ -70,8 +96,29 @@ class EntrepriseController {
         $entreprise = $this->entrepriseModel->getById($id);
 
         if (!$entreprise) {
+            // Journalisation de l'erreur d'accès à une entreprise inexistante
+            if (isLoggedIn()) {
+                $this->logManager->warning(
+                    "Tentative d'accès à une entreprise inexistante",
+                    $_SESSION['email'],
+                    ['entreprise_id' => $id]
+                );
+            }
+
             // Redirection vers la liste si entreprise non trouvée
             redirect(url('entreprises'));
+        }
+
+        // Journalisation de la consultation détaillée
+        if (isLoggedIn()) {
+            $this->logManager->info(
+                "Consultation du détail d'une entreprise",
+                $_SESSION['email'],
+                [
+                    'entreprise_id' => $id,
+                    'entreprise_nom' => $entreprise['nom']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -87,6 +134,12 @@ class EntrepriseController {
     public function creer() {
         // Vérification des droits d'accès
         if (!checkAccess('entreprise_creer')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de création d'entreprise sans autorisation",
+                $_SESSION['email']
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('entreprises'));
         }
@@ -113,11 +166,42 @@ class EntrepriseController {
                 $result = $this->entrepriseModel->create($entreprise);
 
                 if ($result) {
+                    // Journalisation de la création réussie
+                    $this->logManager->success(
+                        "Création d'une entreprise",
+                        $_SESSION['email'],
+                        [
+                            'entreprise_id' => $result,
+                            'entreprise_nom' => $entreprise['nom'],
+                            'entreprise_email' => $entreprise['email']
+                        ]
+                    );
+
                     // Redirection vers la page de détail de l'entreprise créée
                     redirect(url('entreprises', 'detail', ['id' => $result]));
                 } else {
                     $errors[] = "Une erreur est survenue lors de la création de l'entreprise.";
+
+                    // Journalisation de l'échec
+                    $this->logManager->error(
+                        "Échec de création d'une entreprise",
+                        $_SESSION['email'],
+                        [
+                            'entreprise_nom' => $entreprise['nom'],
+                            'entreprise_email' => $entreprise['email']
+                        ]
+                    );
                 }
+            } else {
+                // Journalisation des erreurs de validation
+                $this->logManager->warning(
+                    "Erreurs de validation lors de la création d'une entreprise",
+                    $_SESSION['email'],
+                    [
+                        'errors' => $errors,
+                        'entreprise_nom' => $entreprise['nom']
+                    ]
+                );
             }
         }
 
@@ -134,6 +218,12 @@ class EntrepriseController {
     public function modifier() {
         // Vérification des droits d'accès
         if (!checkAccess('entreprise_modifier')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de modification d'entreprise sans autorisation",
+                $_SESSION['email']
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('entreprises'));
         }
@@ -150,6 +240,13 @@ class EntrepriseController {
         $entreprise = $this->entrepriseModel->getById($id);
 
         if (!$entreprise) {
+            // Journalisation de la tentative de modification d'une entreprise inexistante
+            $this->logManager->warning(
+                "Tentative de modification d'une entreprise inexistante",
+                $_SESSION['email'],
+                ['entreprise_id' => $id]
+            );
+
             // Redirection vers la liste si entreprise non trouvée
             redirect(url('entreprises'));
         }
@@ -169,12 +266,55 @@ class EntrepriseController {
 
                 if ($result) {
                     $success = true;
+
+                    // Journalisation de la modification réussie
+                    $this->logManager->success(
+                        "Modification d'une entreprise",
+                        $_SESSION['email'],
+                        [
+                            'entreprise_id' => $id,
+                            'entreprise_nom' => $updatedEntreprise['nom'],
+                            'entreprise_email' => $updatedEntreprise['email']
+                        ]
+                    );
+
                     // Rafraîchissement des données de l'entreprise
                     $entreprise = $this->entrepriseModel->getById($id);
                 } else {
                     $errors[] = "Une erreur est survenue lors de la mise à jour de l'entreprise.";
+
+                    // Journalisation de l'échec
+                    $this->logManager->error(
+                        "Échec de modification d'une entreprise",
+                        $_SESSION['email'],
+                        [
+                            'entreprise_id' => $id,
+                            'entreprise_nom' => $updatedEntreprise['nom']
+                        ]
+                    );
                 }
+            } else {
+                // Journalisation des erreurs de validation
+                $this->logManager->warning(
+                    "Erreurs de validation lors de la modification d'une entreprise",
+                    $_SESSION['email'],
+                    [
+                        'errors' => $errors,
+                        'entreprise_id' => $id,
+                        'entreprise_nom' => $updatedEntreprise['nom']
+                    ]
+                );
             }
+        } else {
+            // Journalisation de l'accès au formulaire de modification
+            $this->logManager->info(
+                "Accès au formulaire de modification d'une entreprise",
+                $_SESSION['email'],
+                [
+                    'entreprise_id' => $id,
+                    'entreprise_nom' => $entreprise['nom']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -190,6 +330,12 @@ class EntrepriseController {
     public function supprimer() {
         // Vérification des droits d'accès
         if (!checkAccess('entreprise_supprimer')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de suppression d'entreprise sans autorisation",
+                $_SESSION['email']
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('entreprises'));
         }
@@ -206,6 +352,13 @@ class EntrepriseController {
         $entreprise = $this->entrepriseModel->getById($id);
 
         if (!$entreprise) {
+            // Journalisation de la tentative de suppression d'une entreprise inexistante
+            $this->logManager->warning(
+                "Tentative de suppression d'une entreprise inexistante",
+                $_SESSION['email'],
+                ['entreprise_id' => $id]
+            );
+
             // Redirection vers la liste si entreprise non trouvée
             redirect(url('entreprises'));
         }
@@ -214,9 +367,23 @@ class EntrepriseController {
 
         // Confirmation de suppression
         if (isset($_GET['confirm']) && $_GET['confirm'] == 1) {
+            // Sauvegarde des informations de l'entreprise pour la journalisation
+            $entrepriseInfo = [
+                'id' => $entreprise['id'],
+                'nom' => $entreprise['nom'],
+                'email' => $entreprise['email']
+            ];
+
             $result = $this->entrepriseModel->delete($id);
 
             if ($result) {
+                // Journalisation de la suppression réussie
+                $this->logManager->success(
+                    "Suppression d'une entreprise",
+                    $_SESSION['email'],
+                    $entrepriseInfo
+                );
+
                 // Redirection vers la liste avec message de succès
                 $_SESSION['flash_message'] = [
                     'type' => 'success',
@@ -226,7 +393,24 @@ class EntrepriseController {
             } else {
                 // Impossible de supprimer car des offres sont liées
                 $errors[] = "Impossible de supprimer cette entreprise car des offres de stage y sont associées.";
+
+                // Journalisation de l'échec
+                $this->logManager->warning(
+                    "Échec de suppression d'une entreprise avec offres associées",
+                    $_SESSION['email'],
+                    $entrepriseInfo
+                );
             }
+        } else {
+            // Journalisation de l'accès à la page de confirmation
+            $this->logManager->info(
+                "Accès à la page de confirmation de suppression d'une entreprise",
+                $_SESSION['email'],
+                [
+                    'entreprise_id' => $id,
+                    'entreprise_nom' => $entreprise['nom']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -242,6 +426,12 @@ class EntrepriseController {
     public function evaluer() {
         // Vérification de l'authentification et des droits
         if (!isLoggedIn() || !checkAccess('entreprise_evaluer')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative d'évaluation d'entreprise sans autorisation",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null
+            );
+
             redirect(url('auth', 'login'));
         }
 
@@ -256,6 +446,13 @@ class EntrepriseController {
         $entreprise = $this->entrepriseModel->getById($id);
 
         if (!$entreprise) {
+            // Journalisation de la tentative d'évaluation d'une entreprise inexistante
+            $this->logManager->warning(
+                "Tentative d'évaluation d'une entreprise inexistante",
+                $_SESSION['email'],
+                ['entreprise_id' => $id]
+            );
+
             redirect(url('entreprises'));
         }
 
@@ -286,12 +483,56 @@ class EntrepriseController {
 
                 if ($result) {
                     $success = true;
+
+                    // Journalisation de l'évaluation réussie
+                    $this->logManager->success(
+                        "Évaluation d'une entreprise",
+                        $_SESSION['email'],
+                        [
+                            'entreprise_id' => $id,
+                            'entreprise_nom' => $entreprise['nom'],
+                            'note' => $evaluation['note']
+                        ]
+                    );
+
                     // Rafraîchir l'entreprise avec la nouvelle évaluation
                     $entreprise = $this->entrepriseModel->getById($id);
                 } else {
                     $errors[] = "Une erreur est survenue lors de l'ajout de l'évaluation.";
+
+                    // Journalisation de l'échec
+                    $this->logManager->error(
+                        "Échec d'évaluation d'une entreprise",
+                        $_SESSION['email'],
+                        [
+                            'entreprise_id' => $id,
+                            'entreprise_nom' => $entreprise['nom'],
+                            'note' => $evaluation['note']
+                        ]
+                    );
                 }
+            } else {
+                // Journalisation des erreurs de validation
+                $this->logManager->warning(
+                    "Erreurs de validation lors de l'évaluation d'une entreprise",
+                    $_SESSION['email'],
+                    [
+                        'errors' => $errors,
+                        'entreprise_id' => $id,
+                        'entreprise_nom' => $entreprise['nom']
+                    ]
+                );
             }
+        } else {
+            // Journalisation de l'accès au formulaire d'évaluation
+            $this->logManager->info(
+                "Accès au formulaire d'évaluation d'une entreprise",
+                $_SESSION['email'],
+                [
+                    'entreprise_id' => $id,
+                    'entreprise_nom' => $entreprise['nom']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -336,6 +577,18 @@ class EntrepriseController {
 
         // Comptage du nombre total d'entreprises
         $totalEntreprises = $this->entrepriseModel->countAll($filters);
+
+        // Journalisation de la recherche avancée
+        if (isLoggedIn()) {
+            $this->logManager->info(
+                "Recherche avancée d'entreprises",
+                $_SESSION['email'],
+                [
+                    'filters' => $filters,
+                    'results_count' => count($entreprises)
+                ]
+            );
+        }
 
         // Définir le titre de la page
         $pageTitle = "Recherche d'entreprises";

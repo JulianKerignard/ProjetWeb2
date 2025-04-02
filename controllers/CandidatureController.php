@@ -4,14 +4,15 @@
  *
  * Implémente les fonctionnalités de candidature aux offres de stage
  * et de gestion de la liste de souhaits avec validation des droits
- * d'accès et gestion robuste des erreurs.
+ * d'accès, journalisation avancée et gestion robuste des erreurs.
  *
- * @version 1.3
+ * @version 2.0
  */
 class CandidatureController {
     private $candidatureModel;
     private $offreModel;
     private $etudiantModel;
+    private $logManager;
 
     /**
      * Constructeur - Initialise les modèles nécessaires
@@ -39,10 +40,12 @@ class CandidatureController {
         require_once MODELS_PATH . '/Candidature.php';
         require_once MODELS_PATH . '/Offre.php';
         require_once MODELS_PATH . '/Etudiant.php';
+        require_once ROOT_PATH . '/includes/LogManager.php';
 
         $this->candidatureModel = new Candidature();
         $this->offreModel = new Offre();
         $this->etudiantModel = new Etudiant();
+        $this->logManager = LogManager::getInstance();
     }
 
     /**
@@ -62,20 +65,29 @@ class CandidatureController {
     private function getCurrentEtudiantId() {
         // Si déjà en cache dans la session, retourner directement
         if (isset($_SESSION['etudiant_id'])) {
-            error_log("ETUDIANT DEBUG: Utilisation de l'ID étudiant en cache: " . $_SESSION['etudiant_id']);
+            $this->logManager->info("Utilisation de l'ID étudiant en cache: " . $_SESSION['etudiant_id'], $_SESSION['email']);
             return $_SESSION['etudiant_id'];
         }
 
         // Sinon, chercher dans la base de données
         $etudiantId = $this->etudiantModel->getEtudiantIdFromUserId($_SESSION['user_id']);
 
-        // Ajouter ces logs
-        error_log("ETUDIANT DEBUG: Récupération ID étudiant pour user_id=" . $_SESSION['user_id'] .
-            ", résultat: " . ($etudiantId ? $etudiantId : "non trouvé"));
+        // Journalisation du résultat
+        $this->logManager->info(
+            "Récupération ID étudiant pour user_id=" . $_SESSION['user_id'],
+            $_SESSION['email'],
+            ['resultat' => $etudiantId ? $etudiantId : "non trouvé"]
+        );
 
         // Mettre en cache dans la session pour les futures requêtes
         if ($etudiantId) {
             $_SESSION['etudiant_id'] = $etudiantId;
+        } else {
+            $this->logManager->warning(
+                "ID étudiant non trouvé pour l'utilisateur",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id']]
+            );
         }
 
         return $etudiantId;
@@ -89,6 +101,12 @@ class CandidatureController {
         $etudiantId = $this->getCurrentEtudiantId();
 
         if (!$etudiantId) {
+            $this->logManager->error(
+                "Erreur d'accès au profil étudiant",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
@@ -116,6 +134,16 @@ class CandidatureController {
         $candidatures = $this->candidatureModel->getAll($page, ITEMS_PER_PAGE, $filters);
         $totalCandidatures = $this->candidatureModel->countAll($filters);
 
+        // Journalisation de la consultation
+        $this->logManager->info(
+            "Consultation des candidatures personnelles",
+            $_SESSION['email'],
+            [
+                'etudiant_id' => $etudiantId,
+                'nombre_candidatures' => count($candidatures)
+            ]
+        );
+
         // Titre de la page
         $pageTitle = "Mes candidatures";
 
@@ -124,49 +152,68 @@ class CandidatureController {
     }
 
     /**
-     * Affiche le formulaire de candidature et traite l'envoi
+     * Formulaire et traitement de candidature et traite l'envoi
      */
     public function postuler() {
         // Logs de débogage
-        error_log("----------- DÉBUT MÉTHODE POSTULER() -----------");
+        $this->logManager->info("Début méthode postuler()", $_SESSION['email']);
 
         // Récupération de l'ID de l'offre
         $offre_id = isset($_GET['offre_id']) ? (int)$_GET['offre_id'] : 0;
-        error_log("offre_id = $offre_id");
+        $this->logManager->info("ID offre: " . $offre_id, $_SESSION['email']);
 
         if ($offre_id <= 0) {
-            error_log("ID offre invalide, redirection...");
+            $this->logManager->warning("ID offre invalide", $_SESSION['email']);
             redirect(url('offres'));
         }
 
         // Récupération des détails de l'offre
         $offre = $this->offreModel->getById($offre_id);
-        error_log("Offre récupérée: " . ($offre ? "oui" : "non"));
 
         if (!$offre) {
-            error_log("Offre non trouvée, redirection...");
+            $this->logManager->warning(
+                "Offre non trouvée",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id]
+            );
             redirect(url('offres'));
         }
 
         // Récupération de l'ID étudiant
         $etudiantId = $this->getCurrentEtudiantId();
-        error_log("ID étudiant récupéré: " . ($etudiantId ? $etudiantId : "non trouvé"));
+        $this->logManager->info(
+            "ID étudiant récupéré: " . ($etudiantId ? $etudiantId : "non trouvé"),
+            $_SESSION['email']
+        );
 
         if (!$etudiantId) {
+            $this->logManager->error(
+                "Profil étudiant non trouvé",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Erreur: Votre profil étudiant n'a pas été trouvé. Veuillez contacter l'administrateur."
             ];
-            error_log("Profil étudiant non trouvé pour l'utilisateur " . $_SESSION['user_id']);
             redirect(url('offres', 'detail', ['id' => $offre_id]));
         }
 
         // Vérification de candidature existante
         $hasCandidature = $this->candidatureModel->hasCandidature($etudiantId, $offre_id);
-        error_log("hasCandidature = " . ($hasCandidature ? "true" : "false"));
+        $this->logManager->info(
+            "Vérification candidature existante: " . ($hasCandidature ? "oui" : "non"),
+            $_SESSION['email']
+        );
 
         if ($hasCandidature) {
-            error_log("Candidature existante, redirection...");
+            $this->logManager->warning(
+                "Candidature déjà existante",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id, 'etudiant_id' => $etudiantId]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'warning',
                 'message' => "Vous avez déjà postulé à cette offre."
@@ -180,7 +227,7 @@ class CandidatureController {
 
         // Traitement du formulaire
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            error_log("Traitement du formulaire POST reçu");
+            $this->logManager->info("Traitement du formulaire POST", $_SESSION['email']);
 
             // Récupération et nettoyage des données
             $lettre_motivation = isset($_POST['lettre_motivation']) ? cleanData($_POST['lettre_motivation']) : '';
@@ -188,16 +235,24 @@ class CandidatureController {
             // Validation des données
             if (empty($lettre_motivation)) {
                 $errors[] = "La lettre de motivation est obligatoire.";
-                error_log("Erreur: lettre de motivation vide");
+                $this->logManager->warning("Erreur: lettre de motivation vide", $_SESSION['email']);
             } elseif (strlen($lettre_motivation) < 10) { // Réduit à 10 pour les tests
                 $errors[] = "La lettre de motivation doit contenir au moins 10 caractères.";
-                error_log("Erreur: lettre de motivation trop courte (" . strlen($lettre_motivation) . " caractères)");
+                $this->logManager->warning(
+                    "Erreur: lettre de motivation trop courte",
+                    $_SESSION['email'],
+                    ['longueur' => strlen($lettre_motivation)]
+                );
             }
 
             // Validation du fichier CV
             if (!isset($_FILES['cv']) || $_FILES['cv']['error'] != UPLOAD_ERR_OK) {
                 $errors[] = "Vous devez téléverser votre CV.";
-                error_log("Erreur: fichier CV manquant ou erreur d'upload");
+                $this->logManager->warning(
+                    "Erreur: fichier CV manquant ou erreur d'upload",
+                    $_SESSION['email'],
+                    ['error_code' => isset($_FILES['cv']) ? $_FILES['cv']['error'] : 'non défini']
+                );
             } else {
                 // Vérification du type de fichier
                 $allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -205,20 +260,32 @@ class CandidatureController {
                 $fileSize = $_FILES['cv']['size'];
                 $maxSize = 5 * 1024 * 1024; // 5 Mo
 
-                error_log("CV reçu: type=$fileType, taille=$fileSize");
+                $this->logManager->info(
+                    "CV reçu",
+                    $_SESSION['email'],
+                    ['type' => $fileType, 'taille' => $fileSize]
+                );
 
                 if (!in_array($fileType, $allowedTypes) && !empty($fileType)) {
                     $errors[] = "Le format du fichier n'est pas accepté. Formats acceptés : PDF, DOC, DOCX.";
-                    error_log("Erreur: type de fichier non accepté ($fileType)");
+                    $this->logManager->warning(
+                        "Erreur: type de fichier non accepté",
+                        $_SESSION['email'],
+                        ['type' => $fileType]
+                    );
                 } elseif ($fileSize > $maxSize) {
                     $errors[] = "Le fichier est trop volumineux. Taille maximale : 5 Mo.";
-                    error_log("Erreur: fichier trop volumineux ($fileSize octets)");
+                    $this->logManager->warning(
+                        "Erreur: fichier trop volumineux",
+                        $_SESSION['email'],
+                        ['taille' => $fileSize, 'max_size' => $maxSize]
+                    );
                 }
             }
 
             // Création de la candidature si pas d'erreurs
             if (empty($errors)) {
-                error_log("Validation réussie, création de la candidature");
+                $this->logManager->info("Validation réussie, création de la candidature", $_SESSION['email']);
 
                 $data = [
                     'offre_id' => $offre_id,
@@ -229,19 +296,49 @@ class CandidatureController {
                 $result = $this->candidatureModel->create($data, $_FILES);
 
                 if ($result) {
-                    error_log("Candidature créée avec succès (ID: $result)");
+                    $this->logManager->success(
+                        "Candidature créée avec succès",
+                        $_SESSION['email'],
+                        [
+                            'candidature_id' => $result,
+                            'offre_id' => $offre_id,
+                            'offre_titre' => $offre['titre'],
+                            'entreprise_nom' => $offre['entreprise_nom']
+                        ]
+                    );
+
                     $_SESSION['flash_message'] = [
                         'type' => 'success',
                         'message' => "Votre candidature a été envoyée avec succès."
                     ];
                     redirect(url('candidatures', 'mes-candidatures'));
                 } else {
-                    error_log("Erreur lors de la création de la candidature");
+                    $this->logManager->error(
+                        "Échec de la création de candidature",
+                        $_SESSION['email'],
+                        ['offre_id' => $offre_id]
+                    );
+
                     $errors[] = "Une erreur est survenue lors de l'envoi de votre candidature.";
                 }
+            } else {
+                $this->logManager->warning(
+                    "Erreurs de validation du formulaire de candidature",
+                    $_SESSION['email'],
+                    ['errors' => $errors]
+                );
             }
         } else {
-            error_log("Méthode: " . $_SERVER['REQUEST_METHOD'] . ", Role: " . (isset($_SESSION['role']) ? $_SESSION['role'] : 'non défini'));
+            $this->logManager->info(
+                "Accès au formulaire de candidature",
+                $_SESSION['email'],
+                [
+                    'method' => $_SERVER['REQUEST_METHOD'],
+                    'offre_id' => $offre_id,
+                    'offre_titre' => $offre['titre'],
+                    'entreprise_nom' => $offre['entreprise_nom']
+                ]
+            );
         }
 
         // Titre de la page
@@ -250,7 +347,7 @@ class CandidatureController {
         // Chargement de la vue
         include VIEWS_PATH . '/candidatures/postuler.php';
 
-        error_log("----------- FIN MÉTHODE POSTULER() -----------");
+        $this->logManager->info("Fin méthode postuler()", $_SESSION['email']);
     }
 
     /**
@@ -261,6 +358,10 @@ class CandidatureController {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
         if ($id <= 0) {
+            $this->logManager->warning(
+                "Tentative d'accès à une candidature avec ID invalide",
+                $_SESSION['email']
+            );
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
@@ -272,8 +373,28 @@ class CandidatureController {
 
         // Vérification que la candidature existe et appartient à l'étudiant connecté
         if (!$candidature || $candidature['etudiant_id'] != $etudiantId) {
+            $this->logManager->warning(
+                "Tentative d'accès à une candidature non autorisée",
+                $_SESSION['email'],
+                [
+                    'candidature_id' => $id,
+                    'etudiant_id' => $etudiantId,
+                    'candidature_etudiant_id' => $candidature ? $candidature['etudiant_id'] : 'N/A'
+                ]
+            );
             redirect(url('candidatures', 'mes-candidatures'));
         }
+
+        // Journalisation de la consultation
+        $this->logManager->info(
+            "Consultation du détail d'une candidature",
+            $_SESSION['email'],
+            [
+                'candidature_id' => $id,
+                'offre_id' => $candidature['offre_id'],
+                'offre_titre' => $candidature['offre_titre']
+            ]
+        );
 
         // Titre de la page
         $pageTitle = "Détail de la candidature";
@@ -290,6 +411,10 @@ class CandidatureController {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
         if ($id <= 0) {
+            $this->logManager->warning(
+                "Tentative de suppression d'une candidature avec ID invalide",
+                $_SESSION['email']
+            );
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
@@ -301,19 +426,48 @@ class CandidatureController {
 
         // Vérification que la candidature existe et appartient à l'étudiant connecté
         if (!$candidature || $candidature['etudiant_id'] != $etudiantId) {
+            $this->logManager->warning(
+                "Tentative de suppression d'une candidature non autorisée",
+                $_SESSION['email'],
+                [
+                    'candidature_id' => $id,
+                    'etudiant_id' => $etudiantId,
+                    'candidature_etudiant_id' => $candidature ? $candidature['etudiant_id'] : 'N/A'
+                ]
+            );
             redirect(url('candidatures', 'mes-candidatures'));
         }
 
         // Confirmation de suppression
         if (isset($_GET['confirm']) && $_GET['confirm'] == 1) {
+            // Sauvegarde des informations de la candidature pour la journalisation
+            $candidatureInfo = [
+                'id' => $candidature['id'],
+                'offre_id' => $candidature['offre_id'],
+                'offre_titre' => $candidature['offre_titre'],
+                'entreprise_nom' => $candidature['entreprise_nom']
+            ];
+
             $result = $this->candidatureModel->delete($id);
 
             if ($result) {
+                $this->logManager->success(
+                    "Suppression d'une candidature",
+                    $_SESSION['email'],
+                    $candidatureInfo
+                );
+
                 $_SESSION['flash_message'] = [
                     'type' => 'success',
                     'message' => "Votre candidature a été supprimée avec succès."
                 ];
             } else {
+                $this->logManager->error(
+                    "Échec de suppression d'une candidature",
+                    $_SESSION['email'],
+                    $candidatureInfo
+                );
+
                 $_SESSION['flash_message'] = [
                     'type' => 'danger',
                     'message' => "Une erreur est survenue lors de la suppression de votre candidature."
@@ -322,6 +476,17 @@ class CandidatureController {
 
             redirect(url('candidatures', 'mes-candidatures'));
         }
+
+        // Journalisation de l'accès à la page de confirmation
+        $this->logManager->info(
+            "Accès à la page de confirmation de suppression d'une candidature",
+            $_SESSION['email'],
+            [
+                'candidature_id' => $id,
+                'offre_id' => $candidature['offre_id'],
+                'offre_titre' => $candidature['offre_titre']
+            ]
+        );
 
         // Titre de la page
         $pageTitle = "Supprimer la candidature";
@@ -338,6 +503,12 @@ class CandidatureController {
         $etudiantId = $this->getCurrentEtudiantId();
 
         if (!$etudiantId) {
+            $this->logManager->error(
+                "Erreur d'accès au profil étudiant pour la wishlist",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
@@ -348,13 +519,21 @@ class CandidatureController {
         // Récupération du numéro de page courant
         $page = getCurrentPage();
 
-        // Ajout logs
-        error_log("WISHLIST DEBUG: Récupération wishlist pour etudiant_id=$etudiantId");
+        // Ajout logs de débogage
+        $this->logManager->info(
+            "Récupération wishlist",
+            $_SESSION['email'],
+            ['etudiant_id' => $etudiantId, 'page' => $page]
+        );
 
         // Récupération de la wishlist
         $wishlist = $this->candidatureModel->getWishlist($etudiantId);
 
-        error_log("WISHLIST DEBUG: Nombre d'éléments trouvés: " . count($wishlist));
+        $this->logManager->info(
+            "Nombre d'éléments dans la wishlist",
+            $_SESSION['email'],
+            ['count' => count($wishlist)]
+        );
 
         $totalWishlist = count($wishlist);
 
@@ -380,12 +559,21 @@ class CandidatureController {
         $offre_id = isset($_GET['offre_id']) ? (int)$_GET['offre_id'] : 0;
 
         if ($offre_id <= 0) {
+            $this->logManager->warning(
+                "Tentative d'ajout à la wishlist avec ID offre invalide",
+                $_SESSION['email']
+            );
             redirect(url('offres'));
         }
 
         // Vérification que l'offre existe
         $offre = $this->offreModel->getById($offre_id);
         if (!$offre) {
+            $this->logManager->warning(
+                "Tentative d'ajout d'une offre inexistante à la wishlist",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id]
+            );
             redirect(url('offres'));
         }
 
@@ -393,6 +581,12 @@ class CandidatureController {
         $etudiantId = $this->getCurrentEtudiantId();
 
         if (!$etudiantId) {
+            $this->logManager->error(
+                "Erreur d'accès au profil étudiant pour l'ajout à la wishlist",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id'], 'offre_id' => $offre_id]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
@@ -400,27 +594,45 @@ class CandidatureController {
             redirect(url('offres', 'detail', ['id' => $offre_id]));
         }
 
-        // Ajouter logs
-        error_log("WISHLIST DEBUG: Ajout offre_id=$offre_id pour etudiant_id=$etudiantId");
-
         // Ajout à la wishlist
+        $this->logManager->info(
+            "Tentative d'ajout à la wishlist",
+            $_SESSION['email'],
+            ['etudiant_id' => $etudiantId, 'offre_id' => $offre_id, 'offre_titre' => $offre['titre']]
+        );
+
         $result = $this->candidatureModel->addToWishlist($etudiantId, $offre_id);
 
-        // Ajouter log résultat
-        error_log("WISHLIST DEBUG: Résultat de l'ajout: " . var_export($result, true));
-
-        // Message de confirmation
+        // Journalisation et message de confirmation selon le résultat
         if ($result === 'already_exists') {
+            $this->logManager->info(
+                "Offre déjà présente dans la wishlist",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id, 'offre_titre' => $offre['titre']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'warning',
                 'message' => "Cette offre est déjà dans vos favoris."
             ];
         } else if ($result) {
+            $this->logManager->success(
+                "Ajout à la wishlist réussi",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id, 'offre_titre' => $offre['titre']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'success',
                 'message' => "L'offre a été ajoutée à vos favoris."
             ];
         } else {
+            $this->logManager->error(
+                "Échec d'ajout à la wishlist",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id, 'offre_titre' => $offre['titre']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Une erreur est survenue lors de l'ajout aux favoris."
@@ -439,6 +651,10 @@ class CandidatureController {
         $offre_id = isset($_GET['offre_id']) ? (int)$_GET['offre_id'] : 0;
 
         if ($offre_id <= 0) {
+            $this->logManager->warning(
+                "Tentative de retrait de la wishlist avec ID offre invalide",
+                $_SESSION['email']
+            );
             redirect(url('candidatures', 'afficher-wishlist'));
         }
 
@@ -446,6 +662,12 @@ class CandidatureController {
         $etudiantId = $this->getCurrentEtudiantId();
 
         if (!$etudiantId) {
+            $this->logManager->error(
+                "Erreur d'accès au profil étudiant pour le retrait de la wishlist",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id'], 'offre_id' => $offre_id]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Erreur d'accès à votre profil étudiant. Veuillez contacter l'administrateur."
@@ -453,8 +675,26 @@ class CandidatureController {
             redirect(url('candidatures', 'afficher-wishlist'));
         }
 
+        // Récupération du titre de l'offre pour la journalisation
+        $offre = $this->offreModel->getById($offre_id);
+        $offreTitre = $offre ? $offre['titre'] : "ID: $offre_id";
+
         // Retrait de la wishlist
-        $this->candidatureModel->removeFromWishlist($etudiantId, $offre_id);
+        $result = $this->candidatureModel->removeFromWishlist($etudiantId, $offre_id);
+
+        if ($result) {
+            $this->logManager->success(
+                "Retrait de la wishlist réussi",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id, 'offre_titre' => $offreTitre]
+            );
+        } else {
+            $this->logManager->warning(
+                "Échec du retrait de la wishlist",
+                $_SESSION['email'],
+                ['offre_id' => $offre_id, 'offre_titre' => $offreTitre]
+            );
+        }
 
         // Message de confirmation
         $_SESSION['flash_message'] = [
@@ -477,18 +717,37 @@ class CandidatureController {
     public function repairWishlist() {
         // Vider le cache de session
         if (isset($_SESSION['etudiant_id'])) {
+            $oldId = $_SESSION['etudiant_id'];
             unset($_SESSION['etudiant_id']);
+
+            $this->logManager->warning(
+                "Suppression de l'ID étudiant en cache pour réparation",
+                $_SESSION['email'],
+                ['old_etudiant_id' => $oldId]
+            );
         }
 
         // Forcer la récupération de l'ID étudiant
         $etudiantId = $this->getCurrentEtudiantId();
 
         if ($etudiantId) {
+            $this->logManager->success(
+                "Synchronisation du profil étudiant réussie",
+                $_SESSION['email'],
+                ['etudiant_id' => $etudiantId]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'success',
                 'message' => "Synchronisation de votre profil réussie. ID étudiant: $etudiantId"
             ];
         } else {
+            $this->logManager->error(
+                "Échec de synchronisation du profil étudiant",
+                $_SESSION['email'],
+                ['user_id' => $_SESSION['user_id']]
+            );
+
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
                 'message' => "Impossible de synchroniser votre profil étudiant."

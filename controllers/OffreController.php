@@ -1,28 +1,40 @@
 <?php
 /**
  * Contrôleur pour la gestion des offres de stage
- * Implémente les fonctionnalités CRUD et métier
+ * Implémente les fonctionnalités CRUD et métier avec système de journalisation avancé
+ *
+ * @version 2.0
  */
 class OffreController {
     private $offreModel;
     private $entrepriseModel;
+    private $logManager;
 
     /**
-     * Constructeur - Initialise les modèles nécessaires
+     * Constructeur - Initialise les modèles nécessaires et le gestionnaire de logs
      */
     public function __construct() {
         // Chargement des modèles requis
         require_once MODELS_PATH . '/Offre.php';
         require_once MODELS_PATH . '/Entreprise.php';
+        require_once ROOT_PATH . '/includes/LogManager.php';
 
         $this->offreModel = new Offre();
         $this->entrepriseModel = new Entreprise();
+        $this->logManager = LogManager::getInstance();
 
         // Vérification d'authentification pour certaines actions
         $publicActions = ['index', 'rechercher', 'detail'];
         $action = isset($_GET['action']) ? $_GET['action'] : 'index';
 
         if (!in_array($action, $publicActions) && !isLoggedIn()) {
+            // Journalisation de la tentative d'accès non authentifiée
+            $this->logManager->warning(
+                "Tentative d'accès non authentifiée à une action protégée: offres/{$action}",
+                null,
+                ['ip' => $_SERVER['REMOTE_ADDR']]
+            );
+
             // Redirection vers la page de connexion si non authentifié
             redirect(url('auth', 'login'));
         }
@@ -57,10 +69,30 @@ class OffreController {
 
             // Récupération des entreprises pour le filtre
             $entreprises = $this->entrepriseModel->getAllForFilter();
+
+            // Journalisation de la consultation des offres
+            if (isLoggedIn()) {
+                $this->logManager->info(
+                    "Consultation des offres de stage",
+                    $_SESSION['email'],
+                    [
+                        'page' => $page,
+                        'filters' => $filters,
+                        'results_count' => count($offres)
+                    ]
+                );
+            }
         } catch (Exception $e) {
             // En cas d'erreur de connexion ou autre erreur
             error_log("Erreur dans OffreController::index() - " . $e->getMessage());
             $dbError = true;
+
+            // Journalisation de l'erreur
+            $this->logManager->error(
+                "Erreur lors de la consultation des offres",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null,
+                ['error' => $e->getMessage()]
+            );
         }
 
         // Définir le titre de la page
@@ -78,6 +110,15 @@ class OffreController {
      * Cette méthode est un alias de index() pour maintenir la cohérence des routes
      */
     public function rechercher() {
+        // Journalisation de la recherche avancée
+        if (isLoggedIn()) {
+            $this->logManager->info(
+                "Recherche avancée d'offres",
+                $_SESSION['email'],
+                ['filters' => $_GET]
+            );
+        }
+
         // Réutiliser la logique existante de index() qui gère déjà les filtres
         $this->index();
     }
@@ -98,6 +139,15 @@ class OffreController {
         $offre = $this->offreModel->getById($id);
 
         if (!$offre) {
+            // Journalisation de l'erreur d'accès à une offre inexistante
+            if (isLoggedIn()) {
+                $this->logManager->warning(
+                    "Tentative d'accès à une offre inexistante",
+                    $_SESSION['email'],
+                    ['offre_id' => $id]
+                );
+            }
+
             // Redirection vers la liste si offre non trouvée
             redirect(url('offres'));
         }
@@ -131,8 +181,21 @@ class OffreController {
             // Vérifier si l'offre est dans la wishlist
             if ($etudiantId) {
                 $inWishlist = $candidatureModel->isInWishlist($etudiantId, $id);
-                error_log("TEST WISHLIST: Offre $id pour etudiant $etudiantId, résultat: " . ($inWishlist ? "est en favori" : "n'est pas en favori"));
             }
+        }
+
+        // Journalisation de la consultation détaillée
+        if (isLoggedIn()) {
+            $this->logManager->info(
+                "Consultation du détail d'une offre",
+                $_SESSION['email'],
+                [
+                    'offre_id' => $id,
+                    'offre_titre' => $offre['titre'],
+                    'entreprise_id' => $offre['entreprise_id'],
+                    'entreprise_nom' => $offre['entreprise_nom']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -148,6 +211,12 @@ class OffreController {
     public function creer() {
         // Vérification des droits d'accès
         if (!checkAccess('offre_creer')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de création d'offre sans autorisation",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('offres'));
         }
@@ -183,11 +252,45 @@ class OffreController {
                 $result = $this->offreModel->create($offre);
 
                 if ($result) {
+                    // Journalisation de la création réussie
+                    $this->logManager->success(
+                        "Création d'une offre de stage",
+                        $_SESSION['email'],
+                        [
+                            'offre_id' => $result,
+                            'offre_titre' => $offre['titre'],
+                            'entreprise_id' => $offre['entreprise_id'],
+                            'date_debut' => $offre['date_debut'],
+                            'date_fin' => $offre['date_fin'],
+                            'competences' => implode(',', $offre['competences'])
+                        ]
+                    );
+
                     // Redirection vers la page de détail de l'offre créée
                     redirect(url('offres', 'detail', ['id' => $result]));
                 } else {
                     $errors[] = "Une erreur est survenue lors de la création de l'offre.";
+
+                    // Journalisation de l'échec
+                    $this->logManager->error(
+                        "Échec de création d'une offre de stage",
+                        $_SESSION['email'],
+                        [
+                            'offre_titre' => $offre['titre'],
+                            'entreprise_id' => $offre['entreprise_id']
+                        ]
+                    );
                 }
+            } else {
+                // Journalisation des erreurs de validation
+                $this->logManager->warning(
+                    "Erreurs de validation lors de la création d'une offre",
+                    $_SESSION['email'],
+                    [
+                        'errors' => $errors,
+                        'offre_titre' => $offre['titre']
+                    ]
+                );
             }
         }
 
@@ -204,6 +307,12 @@ class OffreController {
     public function modifier() {
         // Vérification des droits d'accès
         if (!checkAccess('offre_modifier')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de modification d'offre sans autorisation",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('offres'));
         }
@@ -220,6 +329,13 @@ class OffreController {
         $offre = $this->offreModel->getById($id);
 
         if (!$offre) {
+            // Journalisation de la tentative de modification d'une offre inexistante
+            $this->logManager->warning(
+                "Tentative de modification d'une offre inexistante",
+                $_SESSION['email'],
+                ['offre_id' => $id]
+            );
+
             // Redirection vers la liste si offre non trouvée
             redirect(url('offres'));
         }
@@ -250,6 +366,21 @@ class OffreController {
 
                 if ($result) {
                     $success = true;
+
+                    // Journalisation de la modification réussie
+                    $this->logManager->success(
+                        "Modification d'une offre de stage",
+                        $_SESSION['email'],
+                        [
+                            'offre_id' => $id,
+                            'offre_titre' => $updatedOffre['titre'],
+                            'entreprise_id' => $updatedOffre['entreprise_id'],
+                            'date_debut' => $updatedOffre['date_debut'],
+                            'date_fin' => $updatedOffre['date_fin'],
+                            'competences' => implode(',', $updatedOffre['competences'])
+                        ]
+                    );
+
                     // Rafraîchissement des données de l'offre
                     $offre = $this->offreModel->getById($id);
                     $offre['competences'] = array_map(function($comp) {
@@ -257,8 +388,39 @@ class OffreController {
                     }, $offre['competences']);
                 } else {
                     $errors[] = "Une erreur est survenue lors de la mise à jour de l'offre.";
+
+                    // Journalisation de l'échec
+                    $this->logManager->error(
+                        "Échec de modification d'une offre de stage",
+                        $_SESSION['email'],
+                        [
+                            'offre_id' => $id,
+                            'offre_titre' => $updatedOffre['titre']
+                        ]
+                    );
                 }
+            } else {
+                // Journalisation des erreurs de validation
+                $this->logManager->warning(
+                    "Erreurs de validation lors de la modification d'une offre",
+                    $_SESSION['email'],
+                    [
+                        'errors' => $errors,
+                        'offre_id' => $id,
+                        'offre_titre' => $updatedOffre['titre']
+                    ]
+                );
             }
+        } else {
+            // Journalisation de l'accès au formulaire de modification
+            $this->logManager->info(
+                "Accès au formulaire de modification d'une offre",
+                $_SESSION['email'],
+                [
+                    'offre_id' => $id,
+                    'offre_titre' => $offre['titre']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -274,6 +436,12 @@ class OffreController {
     public function supprimer() {
         // Vérification des droits d'accès
         if (!checkAccess('offre_supprimer')) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative de suppression d'offre sans autorisation",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('offres'));
         }
@@ -290,21 +458,50 @@ class OffreController {
         $offre = $this->offreModel->getById($id);
 
         if (!$offre) {
+            // Journalisation de la tentative de suppression d'une offre inexistante
+            $this->logManager->warning(
+                "Tentative de suppression d'une offre inexistante",
+                $_SESSION['email'],
+                ['offre_id' => $id]
+            );
+
             // Redirection vers la liste si offre non trouvée
             redirect(url('offres'));
         }
 
         // Confirmation de suppression
         if (isset($_GET['confirm']) && $_GET['confirm'] == 1) {
+            // Sauvegarde des informations de l'offre pour la journalisation
+            $offreInfo = [
+                'id' => $offre['id'],
+                'titre' => $offre['titre'],
+                'entreprise_id' => $offre['entreprise_id'],
+                'entreprise_nom' => $offre['entreprise_nom']
+            ];
+
             $result = $this->offreModel->delete($id);
 
             if ($result) {
+                // Journalisation de la suppression réussie
+                $this->logManager->success(
+                    "Suppression d'une offre de stage",
+                    $_SESSION['email'],
+                    $offreInfo
+                );
+
                 // Redirection vers la liste avec message de succès
                 $_SESSION['flash_message'] = [
                     'type' => 'success',
                     'message' => "L'offre a été supprimée avec succès."
                 ];
             } else {
+                // Journalisation de l'échec
+                $this->logManager->error(
+                    "Échec de suppression d'une offre de stage",
+                    $_SESSION['email'],
+                    $offreInfo
+                );
+
                 // Redirection vers la liste avec message d'erreur
                 $_SESSION['flash_message'] = [
                     'type' => 'danger',
@@ -313,6 +510,16 @@ class OffreController {
             }
 
             redirect(url('offres'));
+        } else {
+            // Journalisation de l'accès à la page de confirmation
+            $this->logManager->info(
+                "Accès à la page de confirmation de suppression d'une offre",
+                $_SESSION['email'],
+                [
+                    'offre_id' => $id,
+                    'offre_titre' => $offre['titre']
+                ]
+            );
         }
 
         // Définir le titre de la page
@@ -328,12 +535,24 @@ class OffreController {
     public function statistiques() {
         // Vérification des droits d'accès (admin ou pilote)
         if (!isAdmin() && !isPilote()) {
+            // Journalisation de la tentative d'accès non autorisé
+            $this->logManager->warning(
+                "Tentative d'accès aux statistiques des offres sans autorisation",
+                isset($_SESSION['email']) ? $_SESSION['email'] : null
+            );
+
             // Redirection vers la liste si droits insuffisants
             redirect(url('offres'));
         }
 
         // Récupération des statistiques
         $statistics = $this->offreModel->getStatistics();
+
+        // Journalisation de la consultation des statistiques
+        $this->logManager->info(
+            "Consultation des statistiques des offres",
+            $_SESSION['email']
+        );
 
         // Définir le titre de la page
         $pageTitle = "Statistiques des offres de stage";
