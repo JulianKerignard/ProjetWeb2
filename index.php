@@ -112,6 +112,20 @@ switch ($page) {
         }
         break;
 
+    case 'profile':
+        require_once 'controllers/ProfileController.php';
+        $controller = new ProfileController();
+
+        switch ($action) {
+            case 'edit':
+                $controller->edit();
+                break;
+            default:
+                $controller->index();
+                break;
+        }
+        break;
+
     case 'admin':
         require_once 'controllers/AdminController.php';
         $controller = new AdminController();

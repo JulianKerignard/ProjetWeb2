@@ -1,226 +1,220 @@
 <?php
 /**
- * Modèle pour la gestion de l'authentification
+ * Modèle pour la gestion de l'authentification et des utilisateurs
  *
- * Architecture optimisée avec:
- * - Cache des requêtes
- * - Gestion robuste des erreurs
- * - Monitoring des tentatives d'accès
- * - Séparation des responsabilités
+ * Gère les opérations liées à l'authentification, comme la connexion,
+ * l'inscription, et la gestion des utilisateurs.
  *
- * @version 3.0
+ * @version 2.0
+ * @author Web4All
  */
 class Auth {
     /** @var PDO Instance de connexion à la base de données */
     private $conn;
 
-    /** @var string Table principale des utilisateurs */
-    private $table = 'utilisateurs';
+    /** @var string Nom de la table des utilisateurs */
+    private $usersTable = 'utilisateurs';
 
-    /** @var string Table des étudiants */
-    private $etudiantsTable = 'etudiants';
-
-    /** @var string Table des pilotes */
-    private $pilotesTable = 'pilotes';
-
-    /** @var array Options pour le hashage des mots de passe */
-    private $hashOptions = ['cost' => 12];
-
-    /** @var array Cache des requêtes utilisateur */
-    private $userCache = [];
-
-    /** @var bool Indicateur d'erreur critique */
-    private $criticalError = false;
+    /** @var bool Indicateur d'erreur de base de données */
+    private $dbError = false;
 
     /**
-     * Constructeur - Initialise la connexion à la base de données
-     * et configure l'environnement d'authentification
+     * Constructeur - Initialise la connexion à la BDD avec gestion d'erreurs
      */
     public function __construct() {
+        // Vérifier si ROOT_PATH est défini
+        if (!defined('ROOT_PATH')) {
+            define('ROOT_PATH', realpath(dirname(__FILE__) . '/..'));
+        }
+
+        // Utiliser le chemin absolu pour l'inclusion
+        require_once ROOT_PATH . '/config/database.php';
+
         try {
-            // Initialisation de la connexion à la base de données
-            require_once ROOT_PATH . '/config/database.php';
             $database = new Database();
             $this->conn = $database->getConnection();
 
-            // Vérification critique de l'état de la connexion
+            // Vérification critique de la connexion
             if ($this->conn === null) {
-                $this->criticalError = true;
-                throw new Exception("Impossible d'établir la connexion à la base de données");
+                $this->dbError = true;
+                error_log("Mode dégradé activé: Impossible d'établir la connexion à la base de données dans Auth.php");
             }
-
-            // Configuration des options de PDO pour optimiser les performances
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false); // Utiliser les prepared statements natifs
-
         } catch (Exception $e) {
-            $this->criticalError = true;
-            $this->logError("Erreur d'initialisation Auth", $e);
+            $this->dbError = true;
+            error_log("Exception dans Auth::__construct(): " . $e->getMessage());
         }
     }
 
     /**
-     * Authentification d'un utilisateur avec monitoring de sécurité
+     * Indique si une erreur de BDD est survenue
      *
-     * @param string $email Identifiant de l'utilisateur
+     * @return bool
+     */
+    public function hasError() {
+        return $this->dbError;
+    }
+
+    /**
+     * Authentification d'un utilisateur
+     *
+     * @param string $email Email de l'utilisateur
      * @param string $password Mot de passe en clair
-     * @return array|bool Données utilisateur ou false en cas d'échec
+     * @return array|false Données de l'utilisateur ou false si échec
      */
     public function login($email, $password) {
-        // Vérification préalable de l'état du système
-        if ($this->criticalError) {
-            $this->logError("Tentative d'authentification avec système compromis: {$email}");
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
             return false;
         }
 
         try {
-            // Journalisation de la tentative (sécurité)
-            $this->logInfo("Tentative d'authentification: {$email}");
+            $query = "SELECT u.*, 
+                     e.id as etudiant_id, e.nom as etudiant_nom, e.prenom as etudiant_prenom,
+                     p.id as pilote_id, p.nom as pilote_nom, p.prenom as pilote_prenom
+                     FROM {$this->usersTable} u
+                     LEFT JOIN etudiants e ON u.id = e.user_id
+                     LEFT JOIN pilotes p ON u.id = p.user_id
+                     WHERE u.email = :email";
 
-            // Implémentation de la stratégie de limitation des tentatives (throttling)
-            // En production, utilisez Redis/Memcached pour stocker les compteurs par IP
-
-            // Récupération de l'utilisateur par son email
-            $query = "SELECT u.id, u.email, u.password, u.role FROM {$this->table} u WHERE u.email = :email";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email', $email);
             $stmt->execute();
 
-            // Vérification de l'existence de l'utilisateur
-            if ($stmt->rowCount() === 0) {
-                $this->logInfo("Échec d'authentification - Utilisateur inexistant: {$email}");
+            if ($stmt->rowCount() == 0) {
+                // Utilisateur non trouvé
                 return false;
             }
 
-            // Récupération des données utilisateur
-            $user = $stmt->fetch();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Vérification du mot de passe avec algorithme de timing constant
-            // pour prévenir les attaques temporelles
+            // Vérification du mot de passe
             if (!password_verify($password, $user['password'])) {
-                $this->logInfo("Échec d'authentification - Mot de passe invalide: {$email}");
+                // Mot de passe incorrect
                 return false;
             }
 
-            // Suppression du mot de passe des données retournées
-            unset($user['password']);
+            // Préparation des données à retourner (sans le mot de passe)
+            $userData = [
+                'id' => $user['id'],
+                'email' => $user['email'],
+                'role' => $user['role'],
+                'created_at' => $user['created_at']
+            ];
 
-            // Stratégie de rehash automatique si l'algorithme évolue
-            $this->checkAndRehashPassword($password, $user['password'], $user['id']);
+            // Ajout des données spécifiques selon le rôle
+            if ($user['role'] === 'etudiant' && $user['etudiant_id']) {
+                $userData['etudiant_id'] = $user['etudiant_id'];
+                $userData['nom'] = $user['etudiant_nom'];
+                $userData['prenom'] = $user['etudiant_prenom'];
+            } elseif ($user['role'] === 'pilote' && $user['pilote_id']) {
+                $userData['pilote_id'] = $user['pilote_id'];
+                $userData['nom'] = $user['pilote_nom'];
+                $userData['prenom'] = $user['pilote_prenom'];
+            } else {
+                // Pour les administrateurs, on utilise des valeurs par défaut
+                $userData['nom'] = 'Administrateur';
+                $userData['prenom'] = 'Système';
+            }
 
-            // Enrichissement du profil avec les données supplémentaires
-            $this->enrichUserProfile($user);
-
-            // Journalisation du succès
-            $this->logInfo("Authentification réussie: {$email} (ID: {$user['id']}, Rôle: {$user['role']})");
-
-            // Mise en cache des données utilisateur
-            $this->userCache[$user['id']] = $user;
-
-            return $user;
+            return $userData;
         } catch (PDOException $e) {
-            $this->logError("Erreur critique d'authentification: {$email}", $e);
+            error_log("Erreur lors de la connexion: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Enrichit le profil utilisateur avec les données spécifiques au rôle
+     * Inscription d'un nouvel utilisateur
      *
-     * @param array &$user Référence aux données utilisateur à enrichir
-     * @return void
+     * @param array $data Données de l'utilisateur
+     * @return int|false ID de l'utilisateur créé ou false en cas d'échec
      */
-    private function enrichUserProfile(&$user) {
+    public function register($data) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
         try {
-            // Cas spécial pour l'administrateur
-            if ($user['role'] === 'admin') {
-                $user['nom'] = 'Administrateur';
-                $user['prenom'] = 'Système';
-                return;
+            // Vérification si l'email existe déjà
+            $checkQuery = "SELECT COUNT(*) as count FROM {$this->usersTable} WHERE email = :email";
+            $checkStmt = $this->conn->prepare($checkQuery);
+            $checkStmt->bindParam(':email', $data['email']);
+            $checkStmt->execute();
+
+            $row = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            if ($row['count'] > 0) {
+                // Email déjà utilisé
+                return false;
             }
 
-            // Sélection de la table de profil en fonction du rôle
-            $profileTable = null;
-            if ($user['role'] === 'etudiant') {
-                $profileTable = $this->etudiantsTable;
-            } elseif ($user['role'] === 'pilote') {
-                $profileTable = $this->pilotesTable;
-            } else {
-                return; // Rôle non reconnu
-            }
+            // Hachage du mot de passe
+            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
 
-            // Récupération des informations de profil
-            $query = "SELECT nom, prenom FROM {$profileTable} WHERE user_id = :user_id";
+            // Insertion du nouvel utilisateur
+            $query = "INSERT INTO {$this->usersTable} (email, password, role, created_at)
+                     VALUES (:email, :password, :role, NOW())";
+
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':user_id', $user['id'], PDO::PARAM_INT);
-            $stmt->execute();
+            $stmt->bindParam(':email', $data['email']);
+            $stmt->bindParam(':password', $hashedPassword);
+            $stmt->bindParam(':role', $data['role']);
 
-            if ($stmt->rowCount() > 0) {
-                $profile = $stmt->fetch();
-                $user['nom'] = $profile['nom'];
-                $user['prenom'] = $profile['prenom'];
-            } else {
-                // Profil incomplet - valeurs par défaut
-                $user['nom'] = 'Utilisateur';
-                $user['prenom'] = $user['role'] === 'etudiant' ? 'Étudiant' : 'Pilote';
-                $this->logWarning("Profil incomplet détecté pour l'utilisateur {$user['id']} ({$user['role']})");
+            if ($stmt->execute()) {
+                return $this->conn->lastInsertId();
             }
+
+            return false;
         } catch (PDOException $e) {
-            $this->logError("Erreur lors de l'enrichissement du profil: {$user['id']}", $e);
-        }
-    }
-
-    /**
-     * Vérifie et rehash automatiquement le mot de passe si nécessaire
-     *
-     * @param string $password Mot de passe en clair
-     * @param string $hash Hash actuel
-     * @param int $userId ID de l'utilisateur
-     * @return bool Succès de l'opération
-     */
-    private function checkAndRehashPassword($password, $hash, $userId) {
-        try {
-            // Vérifier si le hash doit être mis à jour selon les nouveaux algorithmes/paramètres
-            if (password_needs_rehash($hash, PASSWORD_DEFAULT, $this->hashOptions)) {
-                $newHash = password_hash($password, PASSWORD_DEFAULT, $this->hashOptions);
-
-                $query = "UPDATE {$this->table} SET password = :password WHERE id = :id";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':password', $newHash);
-                $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
-
-                if ($stmt->execute()) {
-                    $this->logInfo("Rehash automatique effectué pour l'utilisateur {$userId}");
-                    return true;
-                }
-            }
-            return true;
-        } catch (PDOException $e) {
-            $this->logWarning("Échec du rehash pour l'utilisateur {$userId}: " . $e->getMessage());
+            error_log("Erreur lors de l'inscription: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Récupère un utilisateur par son ID
+     * Réinitialise le mot de passe administrateur au défaut
+     *
+     * @return bool
+     */
+    public function resetAdminPassword() {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            // Hachage du mot de passe par défaut
+            $defaultPassword = 'admin123';
+            $hashedPassword = password_hash($defaultPassword, PASSWORD_DEFAULT);
+
+            // Mise à jour du mot de passe admin
+            $query = "UPDATE {$this->usersTable} SET password = :password WHERE email = 'admin@web4all.fr'";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':password', $hashedPassword);
+
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la réinitialisation du mot de passe admin: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupère les informations d'un utilisateur par son ID
      *
      * @param int $id ID de l'utilisateur
-     * @return array|bool Données utilisateur ou false
+     * @return array|false Données de l'utilisateur ou false si non trouvé
      */
     public function getUserById($id) {
-        // Vérification préalable de l'état du système
-        if ($this->criticalError) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
             return false;
         }
 
-        // Utilisation du cache si disponible
-        if (isset($this->userCache[$id])) {
-            return $this->userCache[$id];
-        }
-
         try {
-            $query = "SELECT u.id, u.email, u.role FROM {$this->table} u WHERE u.id = :id";
+            $query = "SELECT id, email, role, created_at, updated_at FROM {$this->usersTable} WHERE id = :id";
+
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
@@ -229,144 +223,260 @@ class Auth {
                 return false;
             }
 
-            $user = $stmt->fetch();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Enrichissement du profil
-            $this->enrichUserProfile($user);
-
-            // Mise en cache
-            $this->userCache[$id] = $user;
+            // Pour les admins, on ajoute des champs supplémentaires car ils n'ont pas de table spécifique
+            if ($user['role'] === 'admin') {
+                $user['nom'] = isset($_SESSION['nom']) ? $_SESSION['nom'] : 'Administrateur';
+                $user['prenom'] = isset($_SESSION['prenom']) ? $_SESSION['prenom'] : 'Système';
+            }
 
             return $user;
         } catch (PDOException $e) {
-            $this->logError("Erreur lors de la récupération de l'utilisateur: {$id}", $e);
+            error_log("Erreur lors de la récupération de l'utilisateur par ID: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Vérifie l'existence d'un utilisateur par son email
+     * Met à jour les informations d'un utilisateur
      *
-     * @param string $email Email à vérifier
+     * @param int $id ID de l'utilisateur
+     * @param array $data Nouvelles données
      * @return bool
      */
-    public function userExists($email) {
-        // Vérification préalable de l'état du système
-        if ($this->criticalError) {
+    public function updateUser($id, $data) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
             return false;
         }
 
         try {
-            $query = "SELECT id FROM {$this->table} WHERE email = :email";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':email', $email);
-            $stmt->execute();
+            // Construction de la requête en fonction des données fournies
+            $updateFields = [];
+            $params = [];
 
-            return $stmt->rowCount() > 0;
-        } catch (PDOException $e) {
-            $this->logError("Erreur lors de la vérification d'existence: {$email}", $e);
-            return false;
-        }
-    }
-
-    /**
-     * Réinitialisation du mot de passe administrateur (maintenance)
-     *
-     * @param string $password Nouveau mot de passe (ou null pour admin123)
-     * @return bool Succès de l'opération
-     */
-    public function resetAdminPassword($password = null) {
-        // Vérification préalable de l'état du système
-        if ($this->criticalError) {
-            return false;
-        }
-
-        try {
-            // Mot de passe par défaut
-            $password = $password ?? 'admin123';
-
-            // Génération du hash
-            $hash = password_hash($password, PASSWORD_DEFAULT, $this->hashOptions);
-
-            // Vérification de l'existence de l'admin
-            $query = "SELECT id FROM {$this->table} WHERE email = 'admin@web4all.fr' AND role = 'admin'";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute();
-
-            if ($stmt->rowCount() > 0) {
-                // Admin existe - mise à jour du mot de passe
-                $query = "UPDATE {$this->table} SET password = :password 
-                        WHERE email = 'admin@web4all.fr' AND role = 'admin'";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':password', $hash);
-
-                if ($stmt->execute()) {
-                    $this->logInfo("Réinitialisation du mot de passe administrateur réussie");
-                    return true;
-                }
-            } else {
-                // Admin n'existe pas - création
-                $query = "INSERT INTO {$this->table} (email, password, role, created_at) 
-                        VALUES ('admin@web4all.fr', :password, 'admin', NOW())";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':password', $hash);
-
-                if ($stmt->execute()) {
-                    $this->logInfo("Création du compte administrateur réussie");
-                    return true;
-                }
+            if (!empty($data['email'])) {
+                $updateFields[] = "email = :email";
+                $params[':email'] = $data['email'];
             }
 
-            return false;
+            if (!empty($data['password'])) {
+                $updateFields[] = "password = :password";
+                $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
+                $params[':password'] = $hashedPassword;
+            }
+
+            if (empty($updateFields)) {
+                // Rien à mettre à jour
+                return true;
+            }
+
+            $updateFields[] = "updated_at = NOW()";
+
+            $query = "UPDATE {$this->usersTable} SET " . implode(', ', $updateFields) . " WHERE id = :id";
+            $params[':id'] = $id;
+
+            $stmt = $this->conn->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+
+            return $stmt->execute();
         } catch (PDOException $e) {
-            $this->logError("Erreur lors de la réinitialisation admin", $e);
+            error_log("Erreur lors de la mise à jour de l'utilisateur: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Génère un hash sécurisé pour un mot de passe
+     * Récupère tous les utilisateurs avec pagination et filtrage
      *
-     * @param string $password Mot de passe en clair
-     * @return string Hash bcrypt
+     * @param int $page Numéro de page
+     * @param int $limit Nombre d'éléments par page
+     * @param array $filters Critères de filtrage optionnels
+     * @return array
      */
-    public function hashPassword($password) {
-        return password_hash($password, PASSWORD_DEFAULT, $this->hashOptions);
+    public function getAllUsers($page = 1, $limit = ITEMS_PER_PAGE, $filters = []) {
+        // Mode dégradé - retourne un tableau vide
+        if ($this->dbError) {
+            return [];
+        }
+
+        try {
+            // Calcul de l'offset pour la pagination
+            $offset = ($page - 1) * $limit;
+
+            // Construction de la requête SQL de base
+            $query = "SELECT id, email, role, created_at, updated_at FROM {$this->usersTable}";
+
+            // Construction des clauses WHERE selon les filtres
+            $whereConditions = [];
+            $params = [];
+
+            if (!empty($filters['email'])) {
+                $whereConditions[] = "email LIKE :email";
+                $params[':email'] = '%' . $filters['email'] . '%';
+            }
+
+            if (!empty($filters['role'])) {
+                $whereConditions[] = "role = :role";
+                $params[':role'] = $filters['role'];
+            }
+
+            // Ajout des conditions WHERE si présentes
+            if (!empty($whereConditions)) {
+                $query .= " WHERE " . implode(' AND ', $whereConditions);
+            }
+
+            // Tri des résultats (par défaut, par date de création décroissante)
+            $orderBy = !empty($filters['order_by']) ? $filters['order_by'] : 'created_at';
+            $orderDir = !empty($filters['order_dir']) ? $filters['order_dir'] : 'DESC';
+            $query .= " ORDER BY {$orderBy} {$orderDir}";
+
+            // Ajout de la pagination
+            $query .= " LIMIT :limit OFFSET :offset";
+            $params[':limit'] = $limit;
+            $params[':offset'] = $offset;
+
+            // Exécution de la requête
+            $stmt = $this->conn->prepare($query);
+            foreach ($params as $key => $value) {
+                if (is_int($value)) {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value, PDO::PARAM_STR);
+                }
+            }
+            $stmt->execute();
+
+            // Récupération des résultats
+            $users = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $users[] = $row;
+            }
+
+            return $users;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération des utilisateurs: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
-     * Journalise un message d'information
+     * Compte le nombre total d'utilisateurs pour la pagination
      *
-     * @param string $message Message à journaliser
-     * @return void
+     * @param array $filters Critères de filtrage
+     * @return int
      */
-    private function logInfo($message) {
-        error_log("[AUTH][INFO] " . $message);
+    public function countUsers($filters = []) {
+        // Mode dégradé - retourne 0
+        if ($this->dbError) {
+            return 0;
+        }
+
+        try {
+            // Construction de la requête SQL de base
+            $query = "SELECT COUNT(*) as total FROM {$this->usersTable}";
+
+            // Construction des clauses WHERE selon les filtres
+            $whereConditions = [];
+            $params = [];
+
+            if (!empty($filters['email'])) {
+                $whereConditions[] = "email LIKE :email";
+                $params[':email'] = '%' . $filters['email'] . '%';
+            }
+
+            if (!empty($filters['role'])) {
+                $whereConditions[] = "role = :role";
+                $params[':role'] = $filters['role'];
+            }
+
+            // Ajout des conditions WHERE si présentes
+            if (!empty($whereConditions)) {
+                $query .= " WHERE " . implode(' AND ', $whereConditions);
+            }
+
+            // Exécution de la requête
+            $stmt = $this->conn->prepare($query);
+            foreach ($params as $key => $value) {
+                if (is_int($value)) {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value, PDO::PARAM_STR);
+                }
+            }
+            $stmt->execute();
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int) $row['total'];
+        } catch (PDOException $e) {
+            error_log("Erreur lors du comptage des utilisateurs: " . $e->getMessage());
+            return 0;
+        }
     }
 
     /**
-     * Journalise un avertissement
+     * Supprime un utilisateur
      *
-     * @param string $message Message à journaliser
-     * @return void
+     * @param int $id ID de l'utilisateur
+     * @return bool
      */
-    private function logWarning($message) {
-        error_log("[AUTH][WARNING] " . $message);
+    public function deleteUser($id) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            $query = "DELETE FROM {$this->usersTable} WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la suppression de l'utilisateur: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
-     * Journalise une erreur avec trace d'exception
+     * Vérifie si un email est déjà utilisé
      *
-     * @param string $message Message d'erreur
-     * @param Exception|null $exception Exception associée
-     * @return void
+     * @param string $email Email à vérifier
+     * @param int $excludeId ID utilisateur à exclure (pour les mises à jour)
+     * @return bool True si l'email est déjà utilisé
      */
-    private function logError($message, Exception $exception = null) {
-        error_log("[AUTH][ERROR] " . $message);
+    public function isEmailTaken($email, $excludeId = null) {
+        // Mode dégradé - retourne true par sécurité
+        if ($this->dbError) {
+            return true;
+        }
 
-        if ($exception) {
-            error_log("[AUTH][TRACE] " . $exception->getMessage());
-            error_log("[AUTH][TRACE] " . $exception->getTraceAsString());
+        try {
+            $query = "SELECT COUNT(*) as count FROM {$this->usersTable} WHERE email = :email";
+            $params = [':email' => $email];
+
+            if ($excludeId !== null) {
+                $query .= " AND id != :id";
+                $params[':id'] = $excludeId;
+            }
+
+            $stmt = $this->conn->prepare($query);
+            foreach ($params as $key => $value) {
+                if (is_int($value)) {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value, PDO::PARAM_STR);
+                }
+            }
+            $stmt->execute();
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int) $row['count'] > 0;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la vérification de l'email: " . $e->getMessage());
+            return true; // Par sécurité, considérer que l'email est pris en cas d'erreur
         }
     }
 }

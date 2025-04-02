@@ -168,7 +168,7 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
                             <i class="fas fa-user-circle"></i> <?php echo isset($_SESSION['prenom']) ? $_SESSION['prenom'] . ' ' . $_SESSION['nom'] : 'Mon compte'; ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="#">
+                            <li><a class="dropdown-item" href="<?php echo url('profile'); ?>">
                                     <i class="fas fa-id-card me-2"></i> Mon profil
                                 </a></li>
                             <li><hr class="dropdown-divider"></li>
