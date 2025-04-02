@@ -1,15 +1,13 @@
 <?php
-<<<<<<< HEAD
-// Titre de la page
+// Protection contre l'accès direct et initialisation des dépendances
 if (!defined('ROOT_PATH')) {
     require_once realpath(dirname(__FILE__) . '/../../bootstrap.php');
 }
 
 // Titre de la page
 $pageTitle = "Mentions légales";
-// Protection contre l'exécution directe sans données du contrôleur
 
-include ROOT_PATH . '/views/templates/header.php';	
+include ROOT_PATH . '/views/templates/header.php';
 ?>
 
 <link rel="stylesheet" type="text/css" href="/public/css/styles.css">
@@ -108,5 +106,4 @@ include ROOT_PATH . '/views/templates/header.php';
     </div>
 
 
-<?php include ROOT_PATH . '/views/templates/footer.php';
->>>>>>> master
+<?php include ROOT_PATH . '/views/templates/footer.php'; ?>
