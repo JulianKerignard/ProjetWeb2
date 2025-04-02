@@ -192,7 +192,7 @@ include ROOT_PATH . '/views/templates/header.php';
                                                 <span class="badge bg-primary"><?php echo htmlspecialchars($competence['nom']); ?></span>
                                             <?php endforeach; ?>
                                             <?php if (count($offre['competences']) > 3): ?>
-                                                <span class="badge bg-secondary">+<?php echo count($offre['competences']) - 3; ?></span>
+                                                <span class="badge bg-primary">+<?php echo count($offre['competences']) - 3; ?></span>
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
