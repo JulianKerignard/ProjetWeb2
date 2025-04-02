@@ -44,7 +44,7 @@ include ROOT_PATH . '/views/templates/header.php';
                     <?php endif; ?>
                 </div>
                 <div class="col-lg-6 d-none d-lg-block">
-                    <img src="<?php echo URL_ROOT; ?>/public/img/hero-image.svg" alt="Stage" class="img-fluid hero-image">
+                    <img src="<?php echo URL_ROOT; ?>/public/img/hero-image.jpg" alt="Stage" class="img-fluid hero-image">
                 </div>
             </div>
         </div>
