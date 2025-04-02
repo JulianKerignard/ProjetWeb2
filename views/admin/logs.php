@@ -25,6 +25,12 @@ include ROOT_PATH . '/views/templates/header.php';
             </div>
         </div>
 
+        <!-- Message de statut -->
+        <div id="statusMessage" class="alert alert-info mb-4 d-none">
+            <i class="fas fa-info-circle me-2"></i>
+            <span id="statusText">Chargement des données...</span>
+        </div>
+
         <!-- Filtres de recherche -->
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-white">
@@ -65,6 +71,18 @@ include ROOT_PATH . '/views/templates/header.php';
                             <input type="date" class="form-control" id="logDate" name="date" value="<?php echo isset($_GET['date']) ? htmlspecialchars($_GET['date']) : ''; ?>">
                         </div>
 
+                        <!-- Niveau (optionnel) -->
+                        <div class="col-md-4">
+                            <label for="logLevel" class="form-label">Niveau</label>
+                            <select class="form-select" id="logLevel" name="level">
+                                <option value="">Tous</option>
+                                <option value="info" <?php echo isset($_GET['level']) && strtolower($_GET['level']) == 'info' ? 'selected' : ''; ?>>INFO</option>
+                                <option value="warning" <?php echo isset($_GET['level']) && strtolower($_GET['level']) == 'warning' ? 'selected' : ''; ?>>WARNING</option>
+                                <option value="error" <?php echo isset($_GET['level']) && strtolower($_GET['level']) == 'error' ? 'selected' : ''; ?>>ERROR</option>
+                                <option value="success" <?php echo isset($_GET['level']) && strtolower($_GET['level']) == 'success' ? 'selected' : ''; ?>>SUCCESS</option>
+                            </select>
+                        </div>
+
                         <!-- Boutons d'action -->
                         <div class="col-12 text-end">
                             <a href="<?php echo url('admin', 'logs'); ?>" class="btn btn-outline-secondary me-2">
@@ -93,6 +111,9 @@ include ROOT_PATH . '/views/templates/header.php';
                         <button id="refreshLogsBtn" class="btn btn-sm btn-outline-primary ms-2">
                             <i class="fas fa-sync-alt me-1"></i>Actualiser
                         </button>
+                        <a href="<?php echo url('admin', 'add-test-logs'); ?>" class="btn btn-sm btn-outline-success ms-2">
+                            <i class="fas fa-plus me-1"></i>Ajouter des logs de test
+                        </a>
                     </div>
                 </div>
             </div>
@@ -100,6 +121,9 @@ include ROOT_PATH . '/views/templates/header.php';
                 <?php if (empty($logs)): ?>
                     <div class="alert alert-info m-3">
                         <i class="fas fa-info-circle me-2"></i>Aucune activité à afficher.
+                        <p class="mt-2 mb-0">
+                            Vous pouvez <a href="<?php echo url('admin', 'add-test-logs'); ?>">ajouter des logs de test</a> pour voir comment fonctionne l'affichage.
+                        </p>
                     </div>
                 <?php else: ?>
                     <div class="table-responsive">
@@ -151,14 +175,14 @@ include ROOT_PATH . '/views/templates/header.php';
                             </thead>
                             <tbody>
                             <?php foreach ($logs as $log): ?>
-                                <tr class="<?php echo $this->getLogRowClass($log); ?>">
-                                    <td><?php echo htmlspecialchars($log['timestamp']); ?></td>
-                                    <td><?php echo htmlspecialchars($log['user']); ?></td>
-                                    <td><?php echo htmlspecialchars($log['action']); ?></td>
-                                    <td><?php echo htmlspecialchars($log['ip']); ?></td>
+                                <tr class="<?php echo getLogRowClass($log); ?>">
+                                    <td><?php echo isset($log['timestamp']) ? htmlspecialchars($log['timestamp']) : ''; ?></td>
+                                    <td><?php echo isset($log['user']) ? htmlspecialchars($log['user']) : ''; ?></td>
+                                    <td><?php echo isset($log['action']) ? htmlspecialchars($log['action']) : ''; ?></td>
+                                    <td><?php echo isset($log['ip']) ? htmlspecialchars($log['ip']) : ''; ?></td>
                                     <td class="text-center">
                                         <?php if (isset($log['level'])): ?>
-                                            <span class="badge <?php echo $this->getLogLevelBadgeClass($log['level']); ?>">
+                                            <span class="badge <?php echo getLogLevelBadgeClass($log['level']); ?>">
                                                 <?php echo htmlspecialchars($log['level']); ?>
                                             </span>
                                         <?php else: ?>
@@ -199,8 +223,24 @@ include ROOT_PATH . '/views/templates/header.php';
             // Initialisation des variables
             const refreshLogsBtn = document.getElementById('refreshLogsBtn');
             const refreshIndicator = document.getElementById('refreshIndicator');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusText = document.getElementById('statusText');
             let isLoading = false;
             let logPollingInterval = null;
+
+            // Fonction d'affichage des messages de statut
+            function showStatus(message, type = 'info') {
+                statusMessage.className = `alert alert-${type} mb-4`;
+                statusText.textContent = message;
+                statusMessage.classList.remove('d-none');
+
+                // Masquer le message après 5 secondes si c'est un message de succès
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusMessage.classList.add('d-none');
+                    }, 5000);
+                }
+            }
 
             // Fonction de récupération asynchrone des logs
             async function fetchLogs() {
@@ -208,6 +248,7 @@ include ROOT_PATH . '/views/templates/header.php';
 
                 isLoading = true;
                 refreshIndicator.classList.remove('d-none');
+                showStatus('Chargement des logs en cours...', 'info');
 
                 try {
                     // Construction de l'URL avec les filtres actuels
@@ -230,8 +271,11 @@ include ROOT_PATH . '/views/templates/header.php';
                     // Mise à jour du compteur
                     updateLogCounter(data.totalLogs, data.logs.length);
 
+                    showStatus('Logs chargés avec succès', 'success');
+
                 } catch (error) {
                     console.error('Erreur lors de la récupération des logs:', error);
+                    showStatus(`Erreur: ${error.message}`, 'danger');
                 } finally {
                     isLoading = false;
                     refreshIndicator.classList.add('d-none');
@@ -395,7 +439,7 @@ include ROOT_PATH . '/views/templates/header.php';
     </script>
 
 <?php
-// Méthodes d'assistance pour le formatage des logs (à ajouter au contrôleur)
+// Fonctions auxiliaires pour le formatage des logs
 function getLogRowClass($log) {
     if (!isset($log['level'])) {
         return '';

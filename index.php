@@ -146,6 +146,9 @@ switch ($page) {
             case 'maintenance':
                 $controller->maintenance();
                 break;
+            case 'add-test-logs':
+                $controller->addTestLogs();
+                break;
             default:
                 $controller->index();
                 break;

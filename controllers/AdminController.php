@@ -14,7 +14,7 @@ class AdminController {
     private $piloteModel;
     private $statsModel;
     private $logManager;
-    private $dbConnection; // Nouvelle propriété pour la connexion directe à la BDD
+    private $dbConnection; // Connexion directe à la BDD
 
     /**
      * Constructeur - Initialise les modèles nécessaires avec vérification des droits
@@ -195,7 +195,6 @@ class AdminController {
         $this->initSystemLogsTable();
 
         // Ajout d'un log de test si nécessaire (pour s'assurer qu'il y a des données)
-        // Exécuté uniquement si la table est vide
         $this->ensureLogsExist();
 
         // Récupération directe des logs depuis la base de données
@@ -339,6 +338,61 @@ class AdminController {
     }
 
     /**
+     * Méthode de test pour ajouter des logs manuellement
+     */
+    public function addTestLogs() {
+        try {
+            // Vérifier le nom de la table
+            $checkTableQuery = "SHOW TABLES LIKE 'system_logs'";
+            $stmt = $this->dbConnection->prepare($checkTableQuery);
+            $stmt->execute();
+
+            if ($stmt->rowCount() == 0) {
+                // La table n'existe pas, on la crée
+                $this->initSystemLogsTable();
+                echo "Table system_logs créée.<br>";
+            } else {
+                echo "Table system_logs existe déjà.<br>";
+            }
+
+            // Insérer quelques logs de test
+            $insertQuery = "INSERT INTO system_logs (timestamp, user, action, ip, level) VALUES 
+                (NOW(), :user1, :action1, :ip, :level1),
+                (NOW(), :user2, :action2, :ip, :level2),
+                (NOW(), :user3, :action3, :ip, :level3)";
+
+            $stmt = $this->dbConnection->prepare($insertQuery);
+            $ip = $_SERVER['REMOTE_ADDR'];
+
+            $stmt->bindValue(':user1', 'admin@web4all.fr');
+            $stmt->bindValue(':action1', 'Test log insertion');
+            $stmt->bindValue(':ip', $ip);
+            $stmt->bindValue(':level1', 'INFO');
+
+            $stmt->bindValue(':user2', 'admin@web4all.fr');
+            $stmt->bindValue(':action2', 'Consultation des logs de test');
+            $stmt->bindValue(':ip', $ip);
+            $stmt->bindValue(':level2', 'INFO');
+
+            $stmt->bindValue(':user3', 'admin@web4all.fr');
+            $stmt->bindValue(':action3', 'Action de test réussie');
+            $stmt->bindValue(':ip', $ip);
+            $stmt->bindValue(':level3', 'SUCCESS');
+
+            $stmt->execute();
+            $count = $stmt->rowCount();
+
+            echo "Logs de test ajoutés avec succès: {$count} entrées<br>";
+            echo "<a href='" . url('admin', 'logs') . "'>Retour aux logs</a>";
+            exit;
+        } catch (Exception $e) {
+            echo "Erreur lors de l'ajout des logs de test: " . $e->getMessage() . "<br>";
+            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+            exit;
+        }
+    }
+
+    /**
      * Récupère les filtres de recherche pour les logs depuis la requête
      *
      * @return array Tableau des filtres normalisés
@@ -442,10 +496,12 @@ class AdminController {
                     (NOW(), ?, ?, ?, ?)";
 
                 $stmt = $this->dbConnection->prepare($insertQuery);
+                $ip = $_SERVER['REMOTE_ADDR'];
+
                 $stmt->execute([
-                    'admin@web4all.fr', 'Connexion au système', $_SERVER['REMOTE_ADDR'], 'INFO',
-                    'admin@web4all.fr', 'Consultation du tableau de bord', $_SERVER['REMOTE_ADDR'], 'INFO',
-                    'admin@web4all.fr', 'Première visite de la page des logs', $_SERVER['REMOTE_ADDR'], 'SUCCESS'
+                    'admin@web4all.fr', 'Connexion au système', $ip, 'INFO',
+                    'admin@web4all.fr', 'Consultation du tableau de bord', $ip, 'INFO',
+                    'admin@web4all.fr', 'Première visite de la page des logs', $ip, 'SUCCESS'
                 ]);
 
                 error_log("Logs de test ajoutés avec succès");
@@ -457,7 +513,6 @@ class AdminController {
 
     /**
      * Récupère les logs directement depuis la base de données
-     * Méthode alternative au LogManager qui semble ne pas fonctionner correctement
      *
      * @param int $page Numéro de page
      * @param int $limit Nombre d'éléments par page
@@ -472,6 +527,44 @@ class AdminController {
         ];
 
         try {
+            // Vérifier d'abord que la table existe
+            $checkTableQuery = "SHOW TABLES LIKE 'system_logs'";
+            $checkTableStmt = $this->dbConnection->prepare($checkTableQuery);
+            $checkTableStmt->execute();
+
+            if ($checkTableStmt->rowCount() == 0) {
+                error_log("Table system_logs n'existe pas");
+
+                // Essayons avec 'logs' au cas où
+                $checkTableQuery = "SHOW TABLES LIKE 'logs'";
+                $checkTableStmt = $this->dbConnection->prepare($checkTableQuery);
+                $checkTableStmt->execute();
+
+                if ($checkTableStmt->rowCount() == 0) {
+                    error_log("Table logs n'existe pas non plus");
+                    return $result;
+                } else {
+                    // La table s'appelle 'logs', donc utilisons ce nom
+                    error_log("Table logs trouvée à la place de system_logs");
+                    $logsTable = 'logs';
+                }
+            } else {
+                $logsTable = 'system_logs';
+            }
+
+            // Vérifier le contenu de la table
+            $checkContentQuery = "SELECT COUNT(*) as count FROM {$logsTable}";
+            $checkContentStmt = $this->dbConnection->prepare($checkContentQuery);
+            $checkContentStmt->execute();
+            $countRow = $checkContentStmt->fetch(PDO::FETCH_ASSOC);
+
+            error_log("Nombre d'entrées dans {$logsTable}: " . $countRow['count']);
+
+            if ($countRow['count'] == 0) {
+                error_log("La table {$logsTable} est vide");
+                return $result;
+            }
+
             // Construction de la clause WHERE
             $whereConditions = [];
             $params = [];
@@ -500,7 +593,7 @@ class AdminController {
             $whereClause = empty($whereConditions) ? "" : "WHERE " . implode(" AND ", $whereConditions);
 
             // Requête de comptage total
-            $countQuery = "SELECT COUNT(*) as total FROM system_logs {$whereClause}";
+            $countQuery = "SELECT COUNT(*) as total FROM {$logsTable} {$whereClause}";
             $countStmt = $this->dbConnection->prepare($countQuery);
 
             foreach ($params as $key => $value) {
@@ -509,6 +602,8 @@ class AdminController {
 
             $countStmt->execute();
             $result['totalLogs'] = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+            error_log("Total des logs après filtrage: " . $result['totalLogs']);
 
             // Options de tri
             $orderField = !empty($sort['field']) ? $sort['field'] : 'timestamp';
@@ -524,27 +619,33 @@ class AdminController {
             $offset = ($page - 1) * $limit;
 
             // Requête principale
-            $query = "SELECT timestamp, user, action, ip, level 
-                    FROM system_logs 
+            $query = "SELECT * 
+                    FROM {$logsTable} 
                     {$whereClause} 
                     ORDER BY {$orderField} {$orderDirection} 
                     LIMIT :limit OFFSET :offset";
+
+            error_log("Requête SQL logs: " . $query);
 
             $stmt = $this->dbConnection->prepare($query);
 
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value);
+                error_log("Paramètre bind: {$key} = {$value}");
             }
 
             $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
             $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
+            error_log("Exécution de la requête avec limit={$limit}, offset={$offset}");
             $stmt->execute();
+
             $result['logs'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            error_log("Nombre de logs récupérés: " . count($result['logs']));
 
             return $result;
         } catch (Exception $e) {
-            error_log("Erreur lors de la récupération directe des logs: " . $e->getMessage());
+            error_log("Erreur lors de la récupération directe des logs: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $result;
         }
     }
