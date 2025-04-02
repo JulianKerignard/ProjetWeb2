@@ -492,7 +492,7 @@ class Etudiant {
 
             // 1. Création du compte utilisateur
             $userQuery = "INSERT INTO {$this->usersTable} (email, password, role, created_at)
-                     VALUES (:email, :password, 'etudiant', NOW())";
+                 VALUES (:email, :password, 'etudiant', NOW())";
 
             $userStmt = $this->conn->prepare($userQuery);
             $userStmt->bindParam(':email', $data['email']);
@@ -506,7 +506,7 @@ class Etudiant {
 
             // 2. Création du profil étudiant
             $etudiantQuery = "INSERT INTO {$this->table} (user_id, nom, prenom, centre_id, created_at)
-                         VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
+                     VALUES (:user_id, :nom, :prenom, :centre_id, NOW())";
 
             $etudiantStmt = $this->conn->prepare($etudiantQuery);
             $etudiantStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
@@ -567,24 +567,32 @@ class Etudiant {
 
             // 1. Mise à jour du profil étudiant
             $etudiantQuery = "UPDATE {$this->table} SET
-                             nom = :nom,
-                             prenom = :prenom,
-                             updated_at = NOW()
-                             WHERE id = :id";
+                         nom = :nom,
+                         prenom = :prenom,
+                         centre_id = :centre_id,
+                         updated_at = NOW()
+                         WHERE id = :id";
 
             $etudiantStmt = $this->conn->prepare($etudiantQuery);
             $etudiantStmt->bindParam(':nom', $data['nom']);
             $etudiantStmt->bindParam(':prenom', $data['prenom']);
             $etudiantStmt->bindParam(':id', $id, PDO::PARAM_INT);
 
+            // Gestion du centre (peut être NULL)
+            if (!empty($data['centre_id'])) {
+                $etudiantStmt->bindParam(':centre_id', $data['centre_id'], PDO::PARAM_INT);
+            } else {
+                $etudiantStmt->bindValue(':centre_id', null, PDO::PARAM_NULL);
+            }
+
             $etudiantStmt->execute();
 
             // 2. Mise à jour de l'email utilisateur si fourni
             if (!empty($data['email'])) {
                 $userQuery = "UPDATE {$this->usersTable} SET
-                             email = :email,
-                             updated_at = NOW()
-                             WHERE id = :id";
+                         email = :email,
+                         updated_at = NOW()
+                         WHERE id = :id";
 
                 $userStmt = $this->conn->prepare($userQuery);
                 $userStmt->bindParam(':email', $data['email']);
@@ -596,9 +604,9 @@ class Etudiant {
             // 3. Mise à jour du mot de passe si fourni
             if (!empty($data['password'])) {
                 $userQuery = "UPDATE {$this->usersTable} SET
-                             password = :password,
-                             updated_at = NOW()
-                             WHERE id = :id";
+                         password = :password,
+                         updated_at = NOW()
+                         WHERE id = :id";
 
                 $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
 

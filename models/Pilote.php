@@ -477,15 +477,15 @@ class Pilote {
 
             // Base de la requête
             $query = "SELECT e.*, u.email, c.nom as centre_nom, c.code as centre_code, pe.date_attribution
-                  FROM etudiants e
-                  JOIN pilote_etudiant pe ON e.id = pe.etudiant_id
-                  JOIN utilisateurs u ON e.user_id = u.id
-                  LEFT JOIN centres c ON e.centre_id = c.id
-                  WHERE pe.pilote_id = :pilote_id";
+              FROM etudiants e
+              JOIN pilote_etudiant pe ON e.id = pe.etudiant_id
+              JOIN utilisateurs u ON e.user_id = u.id
+              LEFT JOIN centres c ON e.centre_id = c.id
+              WHERE pe.pilote_id = :pilote_id";
 
             // Si le pilote est assigné à un centre, ne montrer que les étudiants de ce centre
             if ($centrePilote) {
-                $query .= " AND e.centre_id = :centre_id";
+                $query .= " AND (e.centre_id = :centre_id OR e.centre_id IS NULL)";
             }
 
             $query .= " ORDER BY e.nom, e.prenom";
@@ -537,18 +537,26 @@ class Pilote {
             // Vérifier si l'étudiant et le pilote sont du même centre
             $pilote = $this->getById($piloteId);
 
-            // Si le pilote est affecté à un centre, vérifier que l'étudiant est du même centre
-            if ($pilote['centre_id']) {
-                $etudiantQuery = "SELECT centre_id FROM etudiants WHERE id = :etudiant_id";
-                $etudiantStmt = $this->conn->prepare($etudiantQuery);
-                $etudiantStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
-                $etudiantStmt->execute();
+            // Récupérer le centre de l'étudiant
+            $etudiantQuery = "SELECT centre_id FROM etudiants WHERE id = :etudiant_id";
+            $etudiantStmt = $this->conn->prepare($etudiantQuery);
+            $etudiantStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+            $etudiantStmt->execute();
 
-                if ($etudiantStmt->rowCount() > 0) {
-                    $etudiant = $etudiantStmt->fetch(PDO::FETCH_ASSOC);
+            if ($etudiantStmt->rowCount() > 0) {
+                $etudiant = $etudiantStmt->fetch(PDO::FETCH_ASSOC);
 
-                    // Si l'étudiant a un centre défini et différent de celui du pilote
-                    if ($etudiant['centre_id'] && $etudiant['centre_id'] != $pilote['centre_id']) {
+                // Si le pilote a un centre défini et que soit l'étudiant n'a pas de centre soit son centre est différent
+                if ($pilote['centre_id'] && ($etudiant['centre_id'] === null || $etudiant['centre_id'] != $pilote['centre_id'])) {
+                    // Si l'étudiant n'a pas de centre, on lui assigne celui du pilote
+                    if ($etudiant['centre_id'] === null) {
+                        $updateQuery = "UPDATE etudiants SET centre_id = :centre_id WHERE id = :etudiant_id";
+                        $updateStmt = $this->conn->prepare($updateQuery);
+                        $updateStmt->bindParam(':centre_id', $pilote['centre_id'], PDO::PARAM_INT);
+                        $updateStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
+                        $updateStmt->execute();
+                    } else {
+                        // Les centres sont différents, on refuse l'attribution
                         return 'not_same_centre';
                     }
                 }
@@ -556,7 +564,7 @@ class Pilote {
 
             // Vérifier si l'attribution existe déjà
             $checkQuery = "SELECT COUNT(*) as count FROM pilote_etudiant 
-                       WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
+                   WHERE pilote_id = :pilote_id AND etudiant_id = :etudiant_id";
             $checkStmt = $this->conn->prepare($checkQuery);
             $checkStmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
             $checkStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
@@ -576,7 +584,7 @@ class Pilote {
 
             // Créer la nouvelle attribution
             $insertQuery = "INSERT INTO pilote_etudiant (pilote_id, etudiant_id, date_attribution)
-                        VALUES (:pilote_id, :etudiant_id, NOW())";
+                    VALUES (:pilote_id, :etudiant_id, NOW())";
             $insertStmt = $this->conn->prepare($insertQuery);
             $insertStmt->bindParam(':pilote_id', $piloteId, PDO::PARAM_INT);
             $insertStmt->bindParam(':etudiant_id', $etudiantId, PDO::PARAM_INT);
@@ -709,7 +717,7 @@ class Pilote {
     }
 
     /**
-     * Récupère les étudiants disponibles pour un pilote (du même centre)
+     * Récupère les étudiants disponibles pour un pilote (uniquement du même centre)
      *
      * @param int $piloteId ID du pilote
      * @param int $limit Nombre maximum d'étudiants à récupérer
@@ -732,13 +740,13 @@ class Pilote {
 
             // Base de la requête pour obtenir tous les étudiants
             $query = "SELECT e.id, e.nom, e.prenom, u.email, c.nom as centre_nom
-                      FROM etudiants e
-                      JOIN utilisateurs u ON e.user_id = u.id
-                      LEFT JOIN centres c ON e.centre_id = c.id";
+                  FROM etudiants e
+                  JOIN utilisateurs u ON e.user_id = u.id
+                  LEFT JOIN centres c ON e.centre_id = c.id";
 
             // Si le pilote est assigné à un centre, ne montrer que les étudiants de ce centre
             if ($centrePilote) {
-                $query .= " WHERE e.centre_id = :centre_id OR e.centre_id IS NULL";
+                $query .= " WHERE e.centre_id = :centre_id";
             }
 
             $query .= " ORDER BY e.nom, e.prenom LIMIT :limit";
