@@ -25,7 +25,7 @@ include ROOT_PATH . '/views/templates/header.php';
             <div class="container">
                 <div class="row">
                     <div class="col-lg-8 col-md-10 mx-auto hero-content">
-                        <h1 class="display-4 fw-bold mb-4 text-white">Trouvez le Stage idéal pour votre carrière</h1>
+                        <h1 class="display-4 fw-bold mb-4 text-white">Trouvez test le Stage idéal pour votre carrière</h1>
                         <p class="lead mb-5 text-white">Une plateforme complète pour vous aider dans votre recherche de stage et faciliter votre entrée dans le monde professionnel.</p>
                         <?php if (!isLoggedIn()): ?>
                             <div class="d-grid gap-2 d-md-flex">
