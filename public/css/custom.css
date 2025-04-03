@@ -485,3 +485,55 @@ body:has(.student-stats-container) footer {
         height: 200px !important;
     }
 }
+
+/* =======================================================
+   NOUVEAUX CORRECTIFS POUR LA SECTION DES ÉVALUATIONS
+   ======================================================= */
+
+/* Correction spécifique pour la section des évaluations */
+.detail-view .card:has(.list-group-item) {
+    margin-bottom: 150px !important; /* Espacement important sous la carte des évaluations */
+    position: relative;
+    z-index: 5; /* Z-index suffisamment élevé pour dépasser les éléments de base */
+}
+
+/* Ciblage spécifique de la liste des évaluations */
+.list-group-flush,
+.list-group-item {
+    position: relative;
+    z-index: 6;
+    overflow: visible; /* Permet au contenu de déborder si nécessaire */
+}
+
+/* Force l'affichage de tous les éléments dans la carte des évaluations */
+.detail-view .list-group-item {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Fixation spécifique pour les cartes d'évaluations */
+.detail-view .card:last-of-type {
+    margin-bottom: 250px !important; /* Espacement très important pour le dernier élément */
+}
+
+/* Style pour améliorer la visibilité des évaluations */
+.list-group-item {
+    background-color: #fff !important;
+    border: 1px solid rgba(0,0,0,.125) !important;
+    padding: 1rem 1.25rem !important;
+}
+
+/* Élément de séparation spécifique pour les évaluations */
+.evaluation-spacer {
+    display: block !important;
+    clear: both !important;
+    height: 200px !important;
+    width: 100% !important;
+    visibility: visible !important;
+    margin-bottom: 80px !important;
+}
+
+/* Augmentation garantie de l'espacement avec le footer */
+body:has(.detail-view) main {
+    padding-bottom: 300px !important;
+}

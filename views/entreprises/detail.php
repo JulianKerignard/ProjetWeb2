@@ -229,6 +229,9 @@ include ROOT_PATH . '/views/templates/header.php';
                             </div>
                         </div>
                     </div>
+
+                    <!-- Nouvel élément d'espacement après les évaluations -->
+                    <div class="evaluation-spacer"></div>
                 <?php endif; ?>
             </div>
 
@@ -293,6 +296,9 @@ include ROOT_PATH . '/views/templates/header.php';
                 </div>
             </div>
         </div>
+
+        <!-- Élément sentinelle pour éviter le chevauchement avec le footer -->
+        <div id="footer-sentinel" class="mb-5 mt-4 w-100" style="height: 100px; display: block; clear: both;"></div>
     </div>
 
 <?php include ROOT_PATH . '/views/templates/footer.php'; ?>
