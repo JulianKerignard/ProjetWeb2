@@ -6,6 +6,49 @@
  * aux fonctionnalités du système.
  */
 include ROOT_PATH . '/views/templates/header.php';
+
+// Liste des fonctionnalités par catégorie
+$permissionCategories = [
+    'Gestion des entreprises' => [
+        'entreprise_creer' => 'Créer une entreprise',
+        'entreprise_modifier' => 'Modifier une entreprise',
+        'entreprise_supprimer' => 'Supprimer une entreprise',
+        'entreprise_evaluer' => 'Évaluer une entreprise'
+    ],
+    'Gestion des offres' => [
+        'offre_creer' => 'Créer une offre',
+        'offre_modifier' => 'Modifier une offre',
+        'offre_supprimer' => 'Supprimer une offre'
+    ],
+    'Gestion des candidatures' => [
+        'offre_postuler' => 'Postuler à une offre',
+        'wishlist_ajouter' => 'Ajouter à la wishlist',
+        'wishlist_retirer' => 'Retirer de la wishlist',
+        'wishlist_afficher' => 'Afficher la wishlist',
+        'candidatures_afficher' => 'Voir ses candidatures'
+    ],
+    'Gestion des utilisateurs' => [
+        'pilote_creer' => 'Créer un pilote',
+        'pilote_modifier' => 'Modifier un pilote',
+        'pilote_supprimer' => 'Supprimer un pilote',
+        'etudiant_creer' => 'Créer un étudiant',
+        'etudiant_modifier' => 'Modifier un étudiant',
+        'etudiant_supprimer' => 'Supprimer un étudiant'
+    ]
+];
+
+// Rôles disponibles
+$roles = [ROLE_ADMIN, ROLE_PILOTE, ROLE_ETUDIANT];
+
+// Récupérer les permissions actuelles
+require_once ROOT_PATH . '/models/Permission.php';
+$permissionModel = new Permission();
+$currentPermissions = $permissionModel->getAllPermissions();
+
+// Message de confirmation
+$message = '';
+$messageType = '';
+
 ?>
 
     <div class="container mt-4">
@@ -17,166 +60,97 @@ include ROOT_PATH . '/views/templates/header.php';
             </h1>
 
             <div>
+                <a href="<?php echo url('admin', 'reset-permissions'); ?>" class="btn btn-warning">
+                    <i class="fas fa-sync me-2"></i>Réinitialiser les permissions
+                </a>
                 <a href="<?php echo url('admin'); ?>" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Retour au tableau de bord
                 </a>
             </div>
         </div>
 
-        <!-- Matrice des permissions -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Matrice des rôles et permissions</h5>
+        <?php if (!empty($message)): ?>
+            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                <?php echo $message; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover">
-                        <thead class="table-light">
-                        <tr>
-                            <th>Fonctionnalité</th>
-                            <th class="text-center">Administrateur</th>
-                            <th class="text-center">Pilote</th>
-                            <th class="text-center">Étudiant</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <!-- Entreprises -->
-                        <tr>
-                            <td colspan="4" class="table-secondary"><strong>Gestion des entreprises</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Consulter les entreprises</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Créer une entreprise</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Modifier une entreprise</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Supprimer une entreprise</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Évaluer une entreprise</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                        </tr>
+        <?php endif; ?>
 
-                        <!-- Offres -->
-                        <tr>
-                            <td colspan="4" class="table-secondary"><strong>Gestion des offres</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Consulter les offres</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Créer une offre</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Modifier une offre</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Supprimer une offre</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-
-                        <!-- Candidatures -->
-                        <tr>
-                            <td colspan="4" class="table-secondary"><strong>Gestion des candidatures</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Postuler à une offre</td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Gérer sa wishlist</td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Voir toutes les candidatures</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-
-                        <!-- Utilisateurs -->
-                        <tr>
-                            <td colspan="4" class="table-secondary"><strong>Gestion des utilisateurs</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Gérer les pilotes</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Gérer les étudiants</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-
-                        <!-- Administration -->
-                        <tr>
-                            <td colspan="4" class="table-secondary"><strong>Administration système</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Accès au tableau de bord</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Consulter les statistiques</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Gérer les permissions</td>
-                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
-                        </tr>
-                        </tbody>
-                    </table>
+        <form action="<?php echo url('admin', 'save-permissions'); ?>" method="post">
+            <!-- Matrice des permissions -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-key me-2"></i>Matrice des rôles et permissions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Fonctionnalité</th>
+                                <?php foreach ($roles as $role): ?>
+                                    <th class="text-center"><?php echo ucfirst($role); ?></th>
+                                <?php endforeach; ?>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($permissionCategories as $category => $permissions): ?>
+                                <tr>
+                                    <td colspan="<?php echo count($roles) + 1; ?>" class="table-secondary">
+                                        <strong><?php echo $category; ?></strong>
+                                    </td>
+                                </tr>
+                                <?php foreach ($permissions as $permission => $label): ?>
+                                    <tr>
+                                        <td><?php echo $label; ?></td>
+                                        <?php foreach ($roles as $role): ?>
+                                            <td class="text-center">
+                                                <div class="form-check form-check-inline d-flex justify-content-center">
+                                                    <?php if ($role === ROLE_ADMIN): ?>
+                                                        <!-- L'admin a toujours toutes les permissions -->
+                                                        <input class="form-check-input" type="checkbox"
+                                                               checked disabled>
+                                                        <input type="hidden" name="permissions[<?php echo $role; ?>][]"
+                                                               value="<?php echo $permission; ?>">
+                                                    <?php else: ?>
+                                                        <input class="form-check-input" type="checkbox"
+                                                               name="permissions[<?php echo $role; ?>][]"
+                                                               value="<?php echo $permission; ?>"
+                                                            <?php echo (isset($currentPermissions[$role]) && in_array($permission, $currentPermissions[$role])) ? 'checked' : ''; ?>>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-white text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                    </button>
                 </div>
             </div>
-        </div>
+        </form>
 
-        <!-- Note informative -->
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            <strong>Note:</strong> Cette matrice des permissions est actuellement en lecture seule.
-            La modification dynamique des permissions n'est pas implémentée dans cette version de l'application.
+        <!-- Aide -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations sur les permissions</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Note:</strong> Modifiez les permissions en cochant ou décochant les cases correspondantes.
+                    Les modifications ne seront appliquées qu'après avoir cliqué sur le bouton "Enregistrer les modifications".
+                </p>
+                <p>
+                    <strong>Attention:</strong> L'administrateur a automatiquement toutes les permissions,
+                    ces cases ne peuvent pas être décochées.
+                </p>
+            </div>
         </div>
     </div>
 

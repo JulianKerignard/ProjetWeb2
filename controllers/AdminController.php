@@ -512,6 +512,126 @@ class AdminController {
     }
 
     /**
+     * Sauvegarde les permissions
+     */
+    public function savePermissions() {
+        // Sécurité - vérifier que c'est une requête POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect(url('admin', 'permissions'));
+        }
+
+        // Charger le modèle de permission
+        require_once MODELS_PATH . '/Permission.php';
+        $permissionModel = new Permission();
+
+        try {
+            // Récupérer les rôles disponibles
+            $roles = [ROLE_PILOTE, ROLE_ETUDIANT]; // Admin géré à part
+
+            // Commencer une transaction
+            $this->dbConnection->beginTransaction();
+
+            // Pour chaque rôle (sauf admin), réinitialiser et définir les nouvelles permissions
+            foreach ($roles as $role) {
+                // Supprimer toutes les permissions actuelles du rôle
+                $query = "DELETE FROM role_permissions WHERE role = :role";
+                $stmt = $this->dbConnection->prepare($query);
+                $stmt->bindParam(':role', $role);
+                $stmt->execute();
+
+                // Ajouter les nouvelles permissions
+                if (isset($_POST['permissions'][$role]) && is_array($_POST['permissions'][$role])) {
+                    foreach ($_POST['permissions'][$role] as $permission) {
+                        $permissionModel->addPermission($role, $permission);
+                    }
+                }
+            }
+
+            // Valider la transaction
+            $this->dbConnection->commit();
+
+            // Journaliser l'action
+            $this->logManager->success(
+                "Modification des permissions",
+                $_SESSION['email'],
+                ['roles' => $roles]
+            );
+
+            // Message de succès
+            $_SESSION['flash_message'] = [
+                'type' => 'success',
+                'message' => "Les permissions ont été mises à jour avec succès."
+            ];
+        } catch (Exception $e) {
+            // Annuler la transaction en cas d'erreur
+            $this->dbConnection->rollBack();
+
+            // Journaliser l'erreur
+            $this->logManager->error(
+                "Échec de modification des permissions",
+                $_SESSION['email'],
+                ['error' => $e->getMessage()]
+            );
+
+            // Message d'erreur
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Une erreur est survenue lors de la mise à jour des permissions: " . $e->getMessage()
+            ];
+        }
+
+        // Redirection vers la page des permissions
+        redirect(url('admin', 'permissions'));
+    }
+
+    /**
+     * Réinitialise les permissions aux valeurs par défaut
+     */
+    public function resetPermissions() {
+        // Charger le modèle de permission
+        require_once MODELS_PATH . '/Permission.php';
+        $permissionModel = new Permission();
+
+        try {
+            // Réinitialiser aux valeurs par défaut
+            $result = $permissionModel->initDefaultPermissions();
+
+            if ($result) {
+                // Journaliser l'action
+                $this->logManager->success(
+                    "Réinitialisation des permissions aux valeurs par défaut",
+                    $_SESSION['email']
+                );
+
+                // Message de succès
+                $_SESSION['flash_message'] = [
+                    'type' => 'success',
+                    'message' => "Les permissions ont été réinitialisées aux valeurs par défaut."
+                ];
+            } else {
+                throw new Exception("Échec de la réinitialisation des permissions.");
+            }
+        } catch (Exception $e) {
+            // Journaliser l'erreur
+            $this->logManager->error(
+                "Échec de réinitialisation des permissions",
+                $_SESSION['email'],
+                ['error' => $e->getMessage()]
+            );
+
+            // Message d'erreur
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Une erreur est survenue lors de la réinitialisation des permissions: " . $e->getMessage()
+            ];
+        }
+
+        // Redirection vers la page des permissions
+        redirect(url('admin', 'permissions'));
+    }
+
+
+    /**
      * Récupère les logs directement depuis la base de données
      *
      * @param int $page Numéro de page

@@ -102,41 +102,22 @@ function isPilote() {
  * @return bool
  */
 function checkAccess($feature) {
-    // Matrice d'accès basée sur les rôles
-    $accessMatrix = [
-        ROLE_ADMIN => [
-            'entreprise_creer', 'entreprise_modifier', 'entreprise_supprimer',
-            'offre_creer', 'offre_modifier', 'offre_supprimer',
-            'pilote_creer', 'pilote_modifier', 'pilote_supprimer',
-            'etudiant_creer', 'etudiant_modifier', 'etudiant_supprimer'
-        ],
-        ROLE_PILOTE => [
-            'entreprise_creer', 'entreprise_modifier',
-            'offre_creer', 'offre_modifier',
-            'etudiant_creer', 'etudiant_modifier'
-        ],
-        ROLE_ETUDIANT => [
-            'entreprise_evaluer',
-            'wishlist_ajouter', 'wishlist_retirer', 'wishlist_afficher',
-            'offre_postuler', 'candidatures_afficher'
-        ]
-    ];
+    // L'administrateur a accès à tout
+    if (isAdmin()) {
+        return true;
+    }
 
     if (!isLoggedIn()) {
         return false;
     }
 
-    if (isAdmin()) {
-        return true; // Admin a accès à toutes les fonctionnalités
-    }
+    require_once ROOT_PATH . '/models/Permission.php';
+    $permissionModel = new Permission();
 
     $userRole = $_SESSION['role'];
 
-    if (isset($accessMatrix[$userRole]) && in_array($feature, $accessMatrix[$userRole])) {
-        return true;
-    }
-
-    return false;
+    // Vérifier dans la base de données
+    return $permissionModel->hasPermission($userRole, $feature);
 }
 
 /**

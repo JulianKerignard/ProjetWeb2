@@ -140,6 +140,12 @@ switch ($page) {
             case 'permissions':
                 $controller->permissions();
                 break;
+            case 'save-permissions':
+                $controller->savePermissions();
+                break;
+            case 'reset-permissions':
+                $controller->resetPermissions();
+                break;
             case 'logs':
                 $controller->logs();
                 break;
