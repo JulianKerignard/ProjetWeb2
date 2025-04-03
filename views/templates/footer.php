@@ -51,8 +51,6 @@ if (!defined('ROOT_PATH')) {
                     <p><i class="fas fa-map-marker-alt me-3"></i> 1 Avenue des Stages, 75000 Paris</p>
                     <p><i class="fas fa-envelope me-3"></i> contact@web4all.fr</p>
                     <p><i class="fas fa-phone me-3"></i> +33 7 66 85 63 90</p>
-                    <p><i class="fas fa-envelope me-3"></i> <a href="mailto:contact@web4all.fr">contact@web4all.fr</a></p>
-                    <p><i class="fas fa-phone me-3"></i> <a href="tel:+33123456789">+33 1 23 45 67 89</a></p>
                     <p><i class="fas fa-clock me-3"></i> Lun-Ven: 9h00-18h00</p>
                 </address>
 
