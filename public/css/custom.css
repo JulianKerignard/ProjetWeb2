@@ -487,102 +487,53 @@ body:has(.student-stats-container) footer {
 }
 
 /* =======================================================
-   STYLES POUR LES ÉVALUATIONS PAGINÉES
+   NOUVEAUX CORRECTIFS POUR LA SECTION DES ÉVALUATIONS
    ======================================================= */
 
-/* Conteneur principal des évaluations */
-.evaluations-container {
+/* Correction spécifique pour la section des évaluations */
+.detail-view .card:has(.list-group-item) {
+    margin-bottom: 150px !important; /* Espacement important sous la carte des évaluations */
     position: relative;
-    z-index: 10;
-    overflow: visible;
-    margin-bottom: 20px;
+    z-index: 5; /* Z-index suffisamment élevé pour dépasser les éléments de base */
 }
 
-/* Style pour chaque évaluation */
-.evaluation-item {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-radius: 8px;
-    border: 1px solid rgba(0,0,0,0.08);
-    background-color: #fff;
-    margin-bottom: 15px;
+/* Ciblage spécifique de la liste des évaluations */
+.list-group-flush,
+.list-group-item {
     position: relative;
-    z-index: 20;
+    z-index: 6;
+    overflow: visible; /* Permet au contenu de déborder si nécessaire */
 }
 
-.evaluation-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-/* Style pour l'en-tête de l'évaluation */
-.evaluation-item .card-body {
-    padding: 1rem;
-    position: relative;
-    z-index: 21;
-}
-
-/* Style des étoiles */
-.evaluation-item .stars {
-    font-size: 1.1rem;
-}
-
-/* Amélioration du style de pagination */
-.pagination {
-    margin-bottom: 0;
-    position: relative;
-    z-index: 30;
-}
-
-.pagination .page-link {
-    color: var(--primary);
-    border-radius: 4px;
-    margin: 0 2px;
-}
-
-.pagination .page-item.active .page-link {
-    background-color: var(--primary);
-    border-color: var(--primary);
-}
-
-.pagination .page-link:hover {
-    background-color: rgba(37, 99, 235, 0.1);
-}
-
-/* Bouton d'évaluation */
-.btn-primary.evaluation-btn {
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 25;
-}
-
-.btn-primary.evaluation-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-
-/* Force l'affichage des évaluations */
-.detail-view .card-body:has(.evaluations-container),
-.detail-view .evaluations-container {
-    isolation: isolate;
+/* Force l'affichage de tous les éléments dans la carte des évaluations */
+.detail-view .list-group-item {
     display: block !important;
     visibility: visible !important;
-    position: relative;
-    z-index: 1000; /* Z-index très élevé pour garantir la visibilité */
-    contain: none; /* Désactivation du containment pour éviter le clipping */
 }
 
-/* Style spécifique pour la carte d'évaluations */
-.card:has(.evaluations-container) {
+/* Fixation spécifique pour les cartes d'évaluations */
+.detail-view .card:last-of-type {
+    margin-bottom: 250px !important; /* Espacement très important pour le dernier élément */
+}
+
+/* Style pour améliorer la visibilité des évaluations */
+.list-group-item {
+    background-color: #fff !important;
+    border: 1px solid rgba(0,0,0,.125) !important;
+    padding: 1rem 1.25rem !important;
+}
+
+/* Élément de séparation spécifique pour les évaluations */
+.evaluation-spacer {
+    display: block !important;
+    clear: both !important;
+    height: 200px !important;
+    width: 100% !important;
+    visibility: visible !important;
     margin-bottom: 80px !important;
-    position: relative;
-    z-index: 999;
-    overflow: visible;
 }
 
-/* Assurez-vous que les commentaires des évaluations sont visibles */
-.evaluation-item .detail-text {
-    max-width: 100%;
-    overflow: visible;
-    word-wrap: break-word;
-    word-break: break-word;
+/* Augmentation garantie de l'espacement avec le footer */
+body:has(.detail-view) main {
+    padding-bottom: 300px !important;
 }
