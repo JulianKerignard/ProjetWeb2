@@ -23,6 +23,31 @@ require_once 'includes/functions.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Protection des routes - Redirection vers la page de connexion si non connecté
+// Définir les routes publiques qui ne nécessitent pas d'authentification
+$publicRoutes = [
+    'auth/login',       // Page de connexion
+    'auth/register',    // Page d'inscription (si disponible)
+    'mentions-legales', // Pages légales
+    'accueil'           // Page d'accueil (optionnel, à retirer si vous voulez la protéger aussi)
+];
+
+// Construction de la route actuelle
+$currentRoute = isset($_GET['page']) ? $_GET['page'] : 'accueil';
+if (isset($_GET['action'])) {
+    $currentRoute .= '/' . $_GET['action'];
+}
+
+// Vérification de l'authentification pour toutes les routes non publiques
+if (!isLoggedIn() && !in_array($currentRoute, $publicRoutes)) {
+    // Sauvegarder la page demandée pour rediriger après connexion
+    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+
+    // Redirection vers la page de connexion
+    redirect(url('auth', 'login'));
+    exit;
+}
+
 // Système de routage simple
 $page = isset($_GET['page']) ? $_GET['page'] : 'accueil';
 $action = isset($_GET['action']) ? $_GET['action'] : 'index';
