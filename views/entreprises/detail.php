@@ -3,7 +3,7 @@
 include ROOT_PATH . '/views/templates/header.php';
 ?>
 
-    <div class="container mt-4">
+    <div class="container mt-4 detail-view">
         <!-- Fil d'Ariane -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">

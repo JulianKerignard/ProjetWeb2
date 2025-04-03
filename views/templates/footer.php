@@ -24,10 +24,10 @@ if (!defined('ROOT_PATH')) {
                 <h5><i class="fas fa-briefcase me-2"></i><?php echo SITE_NAME; ?></h5>
                 <p>Plateforme de gestion des offres de stage pour les étudiants CESI. Trouvez le stage idéal pour votre carrière professionnelle !</p>
                 <div class="social-links mt-3">
-                    <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-link"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.x.com/" class="social-link"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.linkedin.com/" class="social-link"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="https://www.instagram.com/" class="social-link"><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
 
@@ -48,7 +48,7 @@ if (!defined('ROOT_PATH')) {
             <div class="col-lg-4 col-md-6">
                 <h5>Contact</h5>
                 <address>
-                    <p><i class="fas fa-map-marker-alt me-3"></i> 1 Avenue des Stages, 75000 Paris</p>
+                    <p><i class="fas fa-map-marker-alt me-3"></i>6 Rue Bois du Chêne le Loup, 54500 Vandœuvre-lès-Nancy</p>
                     <p><i class="fas fa-envelope me-3"></i> contact@web4all.fr</p>
                     <p><i class="fas fa-phone me-3"></i> +33 7 66 85 63 90</p>
                     <p><i class="fas fa-clock me-3"></i> Lun-Ven: 9h00-18h00</p>

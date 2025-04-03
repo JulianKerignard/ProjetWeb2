@@ -28,6 +28,9 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
     <!-- Styles personnalisés - Nouveau design moderne -->
     <link href="<?php echo URL_ROOT; ?>/public/css/style.css" rel="stylesheet">
 
+    <!-- Correctifs de mise en page - LIGNE À AJOUTER -->
+    <link href="<?php echo URL_ROOT; ?>/public/css/fixes.css" rel="stylesheet">
+
     <!-- Styles personnalisés supplémentaires -->
     <link href="<?php echo URL_ROOT; ?>/public/css/custom.css" rel="stylesheet">
 
