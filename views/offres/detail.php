@@ -57,7 +57,7 @@ $isActive = $dateFin >= $now;
                         </div>
                     </div>
                     <div class="card-body">
-                        <h1 class="h2 mb-3"><?php echo htmlspecialchars($offre['titre']); ?></h1>
+                        <h1 class="h2 mb-3 detail-text"><?php echo htmlspecialchars($offre['titre']); ?></h1>
 
                         <div class="row mb-4">
                             <div class="col-md-6">
@@ -119,7 +119,7 @@ $isActive = $dateFin >= $now;
 
                         <div class="mb-4">
                             <h5><i class="fas fa-align-left me-2"></i>Description:</h5>
-                            <div class="description-content">
+                            <div class="description-content detail-text">
                                 <?php
                                 // Affichage de la description avec préservation du formatage
                                 echo nl2br(htmlspecialchars($offre['description']));
@@ -181,9 +181,9 @@ $isActive = $dateFin >= $now;
                         <h5 class="mb-0"><i class="fas fa-building me-2"></i>À propos de l'entreprise</h5>
                     </div>
                     <div class="card-body">
-                        <h5 class="card-title"><?php echo htmlspecialchars($offre['entreprise_nom']); ?></h5>
+                        <h5 class="card-title detail-text"><?php echo htmlspecialchars($offre['entreprise_nom']); ?></h5>
                         <?php if (!empty($offre['entreprise_description'])): ?>
-                            <p class="card-text">
+                            <p class="card-text detail-text">
                                 <?php
                                 // Limiter la description à 150 caractères
                                 $description = htmlspecialchars($offre['entreprise_description']);
@@ -200,12 +200,12 @@ $isActive = $dateFin >= $now;
                             <hr>
                             <div class="contact-info">
                                 <?php if (!empty($offre['entreprise_email'])): ?>
-                                    <div class="mb-2">
+                                    <div class="mb-2 detail-text">
                                         <i class="fas fa-envelope me-2"></i><?php echo htmlspecialchars($offre['entreprise_email']); ?>
                                     </div>
                                 <?php endif; ?>
                                 <?php if (!empty($offre['entreprise_telephone'])): ?>
-                                    <div>
+                                    <div class="detail-text">
                                         <i class="fas fa-phone me-2"></i><?php echo htmlspecialchars($offre['entreprise_telephone']); ?>
                                     </div>
                                 <?php endif; ?>

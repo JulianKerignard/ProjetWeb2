@@ -28,18 +28,38 @@ $isPhpStormServer = defined('IS_PHPSTORM_SERVER') && IS_PHPSTORM_SERVER;
     <!-- Styles personnalisés - Nouveau design moderne -->
     <link href="<?php echo URL_ROOT; ?>/public/css/style.css" rel="stylesheet">
 
-    <!-- Correctifs de mise en page - LIGNE À AJOUTER -->
-    <link href="<?php echo URL_ROOT; ?>/public/css/fixes.css" rel="stylesheet">
+    <!-- Correctifs de mise en page optimisés - Chargement non-bloquant -->
+    <link href="<?php echo URL_ROOT; ?>/public/css/fixes-optimized.css" rel="stylesheet" media="all" fetchpriority="low">
 
     <!-- Styles personnalisés supplémentaires -->
     <link href="<?php echo URL_ROOT; ?>/public/css/custom.css" rel="stylesheet">
 
-    <!-- Style supplémentaire pour le bouton de connexion -->
+    <!-- Style supplémentaire pour le bouton de connexion et correctifs critiques -->
     <style>
         .btn-primary:hover {
             color: white !important;
         }
+        /* Correctifs critiques intégrés pour éviter les FOUC */
+        .card {
+            max-width: 100%;
+            overflow-wrap: break-word;
+        }
+        img, svg {
+            max-width: 100%;
+        }
     </style>
+
+    <!-- Script de performance - débloque le rendu -->
+    <script>
+        // Marquer le démarrage du rendu
+        document.documentElement.classList.add('render-started');
+        // Optimiser le rendu en différant les scripts non-critiques
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                document.documentElement.classList.add('render-complete');
+            }, 100);
+        });
+    </script>
 </head>
 <body>
 <!-- Navbar moderne avec animation subtile au scroll -->

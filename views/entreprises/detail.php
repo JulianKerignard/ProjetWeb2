@@ -32,12 +32,12 @@ include ROOT_PATH . '/views/templates/header.php';
                         </h5>
                     </div>
                     <div class="card-body">
-                        <h1 class="h2 mb-3"><?php echo htmlspecialchars($entreprise['nom']); ?></h1>
+                        <h1 class="h2 mb-3 detail-text"><?php echo htmlspecialchars($entreprise['nom']); ?></h1>
 
                         <?php if (!empty($entreprise['description'])): ?>
                             <div class="mb-4">
                                 <h5><i class="fas fa-info-circle me-2"></i>Description:</h5>
-                                <p><?php echo nl2br(htmlspecialchars($entreprise['description'])); ?></p>
+                                <p class="detail-text"><?php echo nl2br(htmlspecialchars($entreprise['description'])); ?></p>
                             </div>
                         <?php endif; ?>
 
@@ -46,7 +46,7 @@ include ROOT_PATH . '/views/templates/header.php';
                                 <h5><i class="fas fa-address-card me-2"></i>Contact:</h5>
                                 <ul class="list-unstyled">
                                     <?php if (!empty($entreprise['email'])): ?>
-                                        <li class="mb-2">
+                                        <li class="mb-2 detail-text">
                                             <i class="fas fa-envelope me-2"></i>
                                             <a href="mailto:<?php echo htmlspecialchars($entreprise['email']); ?>">
                                                 <?php echo htmlspecialchars($entreprise['email']); ?>
@@ -55,7 +55,7 @@ include ROOT_PATH . '/views/templates/header.php';
                                     <?php endif; ?>
 
                                     <?php if (!empty($entreprise['telephone'])): ?>
-                                        <li class="mb-2">
+                                        <li class="mb-2 detail-text">
                                             <i class="fas fa-phone me-2"></i>
                                             <a href="tel:<?php echo htmlspecialchars(str_replace(' ', '', $entreprise['telephone'])); ?>">
                                                 <?php echo htmlspecialchars($entreprise['telephone']); ?>
@@ -155,7 +155,7 @@ include ROOT_PATH . '/views/templates/header.php';
                                 <?php foreach ($entreprise['offres'] as $offre): ?>
                                     <a href="<?php echo url('offres', 'detail', ['id' => $offre['id']]); ?>" class="list-group-item list-group-item-action">
                                         <div class="d-flex w-100 justify-content-between">
-                                            <h5 class="mb-1"><?php echo htmlspecialchars($offre['titre']); ?></h5>
+                                            <h5 class="mb-1 detail-text"><?php echo htmlspecialchars($offre['titre']); ?></h5>
                                             <small class="text-muted">
                                                 <?php
                                                 $dateDebut = new DateTime($offre['date_debut']);
@@ -223,7 +223,7 @@ include ROOT_PATH . '/views/templates/header.php';
                                                 ?>
                                             </div>
                                         </div>
-                                        <p class="mb-0"><?php echo nl2br(htmlspecialchars($evaluation['commentaire'])); ?></p>
+                                        <p class="mb-0 detail-text"><?php echo nl2br(htmlspecialchars($evaluation['commentaire'])); ?></p>
                                     </div>
                                 <?php endforeach; ?>
                             </div>

@@ -1,55 +1,33 @@
 /**
- * Correctifs de mise en page pour l'application de gestion des stages
- * Ce fichier contient des règles CSS spécifiques pour résoudre les problèmes
- * de dimensionnement dans les vues détaillées des offres et entreprises.
+ * Correctifs de mise en page optimisés pour l'application de gestion des stages
+ * Version optimisée pour les performances
  */
 
-/* Correction des problèmes de conteneurs */
+/* Base container responsive */
 .container {
     max-width: 100%;
     padding-right: 15px;
     padding-left: 15px;
     margin-right: auto;
     margin-left: auto;
+    box-sizing: border-box;
 }
 
-@media (min-width: 576px) {
-    .container {
-        max-width: 540px;
-    }
-}
+/* Breakpoints optimisés - regroupés pour minimiser la cascade */
+@media (min-width: 576px) { .container { max-width: 540px; } }
+@media (min-width: 768px) { .container { max-width: 720px; } }
+@media (min-width: 992px) { .container { max-width: 960px; } }
+@media (min-width: 1200px) { .container { max-width: 1140px; } }
 
-@media (min-width: 768px) {
-    .container {
-        max-width: 720px;
-    }
-}
-
-@media (min-width: 992px) {
-    .container {
-        max-width: 960px;
-    }
-}
-
-@media (min-width: 1200px) {
-    .container {
-        max-width: 1140px;
-    }
-}
-
-/* Corrections spécifiques pour les vues détaillées */
+/* Optimisations des vues détaillées avec hints pour le navigateur */
 .detail-view .card {
     width: 100%;
     overflow: hidden;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    contain: content; /* Isolation du contexte de rendu */
+    will-change: transform; /* Préparation GPU */
 }
 
-.detail-view .card-body {
-    padding: 1.25rem;
-}
-
-/* Correction des problèmes d'images et médias */
+/* Correction des médias avec une seule règle */
 .detail-view img,
 .detail-view svg,
 .detail-view video {
@@ -57,57 +35,18 @@
     height: auto;
 }
 
-/* Correction des problèmes de grille */
-.detail-view .row {
-    display: flex;
-    flex-wrap: wrap;
-    margin-right: -15px;
-    margin-left: -15px;
-}
-
-.detail-view [class*="col-"] {
-    position: relative;
-    width: 100%;
-    padding-right: 15px;
-    padding-left: 15px;
-}
-
-/* Correction de la largeur des liens dans les cartes */
-.detail-view .list-group-item-action {
-    width: 100%;
-    text-align: left;
-}
-
-/* Correction des débordements de texte */
-.detail-view p,
-.detail-view h1,
-.detail-view h2,
-.detail-view h3,
-.detail-view h4,
-.detail-view h5,
-.detail-view h6,
-.detail-view .text-muted,
-.detail-view .description-content {
+/* Correction textes avec classe unique pour éviter les sélecteurs complexes */
+.detail-text {
     word-wrap: break-word;
     overflow-wrap: break-word;
+    max-width: 100%;
 }
 
-/* Correction pour les tableaux responsives */
-.detail-view .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Corrections pour les petits écrans */
+/* Optimisation mobile - règles minimales */
 @media (max-width: 767.98px) {
     .detail-view .col-lg-8,
     .detail-view .col-lg-4,
     .detail-view .col-md-6 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-
-    .detail-view .card {
-        margin-bottom: 1rem;
+        width: 100%;
     }
 }
