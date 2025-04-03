@@ -26,12 +26,6 @@ if (!defined('ROOT_PATH')) {
             <div class="col-lg-5 col-md-6">
                 <h5><i class="fas fa-briefcase me-2"></i><?php echo SITE_NAME; ?></h5>
                 <p>Plateforme de gestion des offres de stage pour les étudiants CESI. Trouvez le stage idéal pour votre carrière professionnelle !</p>
-                <div class="social-links mt-3">
-                    <a href="https://www.facebook.com/" class="social-link"><i class="fab fa-facebook-f"></i></a>
-                    <a href="https://www.x.com/" class="social-link"><i class="fab fa-twitter"></i></a>
-                    <a href="https://www.linkedin.com/" class="social-link"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="https://www.instagram.com/" class="social-link"><i class="fab fa-instagram"></i></a>
-                </div>
             </div>
 
             <div class="col-lg-3 col-md-6">
@@ -59,10 +53,10 @@ if (!defined('ROOT_PATH')) {
 
                 <h5 class="mt-4">Suivez-nous</h5>
                 <div class="social-links mt-3">
-                    <a href="#" class="social-link" title="Facebook"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-link" title="Twitter"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-link" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="#" class="social-link" title="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/" class="social-link" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://x.com/" class="social-link" title="X"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.linkedin.com/" class="social-link" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="https://www.instagram.com/" class="social-link" title="Instagram"><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
         </div>
