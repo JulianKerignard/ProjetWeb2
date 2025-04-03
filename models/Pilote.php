@@ -223,27 +223,26 @@ class Pilote {
     }
 
     /**
-     * Récupère un pilote par son ID avec tous les détails associés
+     * Récupère un pilote par ID utilisateur
      *
-     * @param int $id ID du pilote
+     * @param int $userId ID de l'utilisateur
      * @return array|false Données du pilote ou false si non trouvé
      */
-    public function getById($id) {
+    public function getByUserId($userId) {
         // Mode dégradé - retourne false
         if ($this->dbError) {
             return false;
         }
 
         try {
-            // Requête optimisée
             $query = "SELECT p.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code
-                     FROM {$this->table} p
-                     LEFT JOIN {$this->usersTable} u ON p.user_id = u.id
-                     LEFT JOIN centres c ON p.centre_id = c.id
-                     WHERE p.id = :id";
+                 FROM {$this->table} p
+                 JOIN {$this->usersTable} u ON p.user_id = u.id
+                 LEFT JOIN centres c ON p.centre_id = c.id
+                 WHERE p.user_id = :user_id";
 
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
             if ($stmt->rowCount() == 0) {
@@ -251,23 +250,9 @@ class Pilote {
             }
 
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $pilote = [
-                'id' => $row['id'],
-                'user_id' => $row['user_id'],
-                'nom' => $row['nom'],
-                'prenom' => $row['prenom'],
-                'email' => $row['email'],
-                'role' => $row['role'],
-                'centre_id' => $row['centre_id'],
-                'centre_nom' => $row['centre_nom'],
-                'centre_code' => $row['centre_code'],
-                'created_at' => $row['created_at'],
-                'updated_at' => $row['updated_at']
-            ];
-
-            return $pilote;
+            return $row;
         } catch (PDOException $e) {
-            error_log("Erreur lors de la récupération du pilote: " . $e->getMessage());
+            error_log("Erreur lors de la récupération du pilote par ID utilisateur: " . $e->getMessage());
             return false;
         }
     }
