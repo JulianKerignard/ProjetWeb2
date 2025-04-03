@@ -17,7 +17,7 @@ if (!defined('ROOT_PATH')) {
 </main>
 
 <!-- Footer moderne -->
-<footer>
+<footer class="mt-5"> <!-- Ajout de mt-5 pour augmenter la marge supérieure -->
     <div class="container">
         <div class="row gy-4">
             <div class="col-lg-5 col-md-6">
@@ -71,7 +71,7 @@ if (!defined('ROOT_PATH')) {
 </footer>
 
 <!-- Back to top button -->
-<button type="button" class="btn btn-primary btn-floating btn-lg" id="btn-back-to-top" style="position: fixed; bottom: 20px; right: 20px; display: none; border-radius: 50%; width: 50px; height: 64px;">
+<button type="button" class="btn btn-primary btn-floating btn-lg" id="btn-back-to-top" style="position: fixed; bottom: 20px; right: 20px; display: none; border-radius: 50%; width: 50px; height: 64px; z-index: 1000;">
     <i class="fas fa-arrow-up"></i>
 </button>
 

@@ -219,7 +219,7 @@ $isActive = $dateFin >= $now;
                 </div>
 
                 <!-- Offres similaires -->
-                <div class="card shadow-sm">
+                <div class="card shadow-sm mb-5"> <!-- Ajout de mb-5 pour augmenter la marge en bas -->
                     <div class="card-header bg-white">
                         <h5 class="mb-0"><i class="fas fa-th-list me-2"></i>Offres similaires</h5>
                     </div>
