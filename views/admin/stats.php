@@ -244,6 +244,9 @@ include ROOT_PATH . '/views/templates/header.php';
                 </button>
             </div>
         </div>
+
+        <!-- Élément de séparation pour éviter les problèmes de chevauchement -->
+        <div class="clearfix" style="height: 150px; display: block; clear: both; width: 100%;"></div>
     </div>
 
     <!-- Inclusion de Chart.js -->
@@ -252,10 +255,11 @@ include ROOT_PATH . '/views/templates/header.php';
         document.addEventListener('DOMContentLoaded', function() {
             // Définition des options communes pour contraindre la taille des graphiques
             const commonOptions = {
-                maintainAspectRatio: false,
+                maintainAspectRatio: true, // Modification essentielle pour éviter l'étirement
                 responsive: true,
+                height: 300,
                 animation: {
-                    duration: 1000, // Animation plus courte pour éviter les problèmes de performance
+                    duration: 500, // Réduction de la durée d'animation pour éviter les problèmes de performance
                 },
                 plugins: {
                     legend: {

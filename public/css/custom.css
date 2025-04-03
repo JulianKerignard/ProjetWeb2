@@ -358,3 +358,68 @@ body:has(.detail-view) footer {
         backface-visibility: hidden;
     }
 }
+
+/* =======================================================
+   CORRECTIFS POUR LA PAGE DES STATISTIQUES
+   ======================================================= */
+
+/* Correctif spécifique pour la page des statistiques */
+body:has(.chart-canvas) {
+    overflow-y: auto;
+    height: auto !important;
+    min-height: 100vh;
+}
+
+/* Modifications pour les conteneurs de graphiques */
+.chart-container {
+    position: relative;
+    height: 300px !important;
+    max-height: 300px !important;
+    width: 100% !important;
+    contain: strict;
+    overflow: hidden !important;
+    margin-bottom: 20px !important;
+}
+
+/* Correction des contextes d'empilement pour les Canvas de graphiques */
+.chart-canvas {
+    max-height: 300px !important;
+    height: 300px !important;
+    position: relative !important;
+    z-index: 1;
+    contain: strict;
+}
+
+/* Correction du positionnement du footer sur la page de statistiques */
+body:has(.chart-canvas) main {
+    padding-bottom: 250px !important;
+    overflow: auto;
+}
+
+/* Empêcher les débordements dans la page des statistiques */
+.card.shadow-sm {
+    overflow: hidden !important;
+}
+
+/* Correction pour le tableau de statistiques */
+table.table {
+    max-width: 100%;
+    table-layout: fixed;
+}
+
+/* Correction des marges sous les lignes de graphiques */
+.row:has(.chart-container) {
+    margin-bottom: 40px !important;
+    padding-bottom: 20px !important;
+}
+
+/* Assurer que les éléments de la page de statistiques ne débordent pas */
+.stat-item {
+    overflow: hidden;
+    word-wrap: break-word;
+}
+
+/* Correctif pour les boutons d'export */
+.btn-success#exportButton {
+    margin-bottom: 40px;
+}

@@ -79,7 +79,9 @@ include ROOT_PATH . '/views/templates/header.php';
                         <?php if (empty($statistics['repartition_competences'])): ?>
                             <div class="alert alert-info">Aucune donnée disponible.</div>
                         <?php else: ?>
-                            <canvas id="competencesChart" height="300"></canvas>
+                            <div class="chart-container" style="position: relative; height: 300px; max-height: 300px; overflow: hidden;">
+                                <canvas id="competencesChart" height="300"></canvas>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -95,7 +97,9 @@ include ROOT_PATH . '/views/templates/header.php';
                         <?php if (empty($statistics['repartition_duree'])): ?>
                             <div class="alert alert-info">Aucune donnée disponible.</div>
                         <?php else: ?>
-                            <canvas id="dureeChart" height="300"></canvas>
+                            <div class="chart-container" style="position: relative; height: 300px; max-height: 300px; overflow: hidden;">
+                                <canvas id="dureeChart" height="300"></canvas>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -165,129 +169,223 @@ include ROOT_PATH . '/views/templates/header.php';
         </div>
     </div>
 
+    <!-- Styles nécessaires pour corriger les problèmes de rendu -->
+    <style>
+        /* Correction pour l'étirement infini */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            max-height: 300px;
+            width: 100%;
+            overflow: hidden !important;
+            contain: strict;
+        }
+
+        canvas {
+            max-height: 300px !important;
+            height: 300px !important;
+            width: 100% !important;
+            contain: size layout;
+        }
+
+        /* Isolation du contexte de rendu pour éviter les propagations */
+        .card {
+            isolation: isolate;
+            contain: content;
+            overflow: hidden;
+        }
+
+        /* Correction spécifique pour le footer */
+        .container + .clearfix {
+            height: 50px !important;
+            max-height: 50px !important;
+            visibility: visible !important;
+            display: block !important;
+            position: relative !important;
+            z-index: 100 !important;
+        }
+    </style>
+
     <!-- Inclusion de Chart.js via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Configuration des graphiques avec Chart.js
+            // Configuration globale pour limiter le rendu et éviter les fuites de mémoire
+            Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+            Chart.defaults.font.size = 12;
+            Chart.defaults.animation.duration = 500;
+            Chart.defaults.responsive = false;
+            Chart.defaults.maintainAspectRatio = false;
 
-            <?php if (!empty($statistics['repartition_competences'])): ?>
-            // Graphique de répartition par compétence
-            const competencesCtx = document.getElementById('competencesChart').getContext('2d');
-            new Chart(competencesCtx, {
-                type: 'bar',
-                data: {
-                    labels: [
-                        <?php foreach ($statistics['repartition_competences'] as $item): ?>
-                        "<?php echo addslashes($item['competence']); ?>",
-                        <?php endforeach; ?>
-                    ],
-                    datasets: [{
-                        label: 'Nombre d\'offres',
-                        data: [
-                            <?php foreach ($statistics['repartition_competences'] as $item): ?>
-                            <?php echo $item['count']; ?>,
-                            <?php endforeach; ?>
-                        ],
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.x !== null) {
-                                        label += context.parsed.x + ' offre(s)';
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
+            // Données prétraitées pour éviter les calculs excessifs
+            const processedData = {
+                competences: <?php echo !empty($statistics['repartition_competences']) ? json_encode($statistics['repartition_competences']) : '[]'; ?>,
+                duree: <?php echo !empty($statistics['repartition_duree']) ? json_encode($statistics['repartition_duree']) : '[]'; ?>
+            };
+
+            // Fonction optimisée de création des graphiques pour éviter les appels récursifs
+            function createOptimizedCharts() {
+                const charts = [];
+
+                <?php if (!empty($statistics['repartition_competences'])): ?>
+                // Graphique de répartition par compétence avec optimisation de rendu
+                const competencesCtx = document.getElementById('competencesChart').getContext('2d');
+                const competencesChart = new Chart(competencesCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: processedData.competences.map(item => item.competence.substring(0, 15)),
+                        datasets: [{
+                            label: 'Nombre d\'offres',
+                            data: processedData.competences.map(item => item.count),
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
                     },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Nombre d\'offres'
-                            }
-                        }
-                    }
-                }
-            });
-            <?php endif; ?>
-
-            <?php if (!empty($statistics['repartition_duree'])): ?>
-            // Graphique de répartition par durée
-            const dureeCtx = document.getElementById('dureeChart').getContext('2d');
-            new Chart(dureeCtx, {
-                type: 'pie',
-                data: {
-                    labels: [
-                        <?php foreach ($statistics['repartition_duree'] as $item): ?>
-                        "<?php echo addslashes($item['duree']); ?>",
-                        <?php endforeach; ?>
-                    ],
-                    datasets: [{
-                        data: [
-                            <?php foreach ($statistics['repartition_duree'] as $item): ?>
-                            <?php echo $item['count']; ?>,
-                            <?php endforeach; ?>
-                        ],
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.7)',
-                            'rgba(75, 192, 192, 0.7)',
-                            'rgba(153, 102, 255, 0.7)',
-                            'rgba(255, 159, 64, 0.7)',
-                            'rgba(255, 99, 132, 0.7)',
-                            'rgba(201, 203, 207, 0.7)'
-                        ],
-                        borderColor: [
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(153, 102, 255, 1)',
-                            'rgba(255, 159, 64, 1)',
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(201, 203, 207, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                                    const percentage = Math.round((value / total) * 100);
-                                    return `${label}: ${value} offre(s) (${percentage}%)`;
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.x !== null) {
+                                            label += context.parsed.x + ' offre(s)';
+                                        }
+                                        return label;
+                                    }
                                 }
                             }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Nombre d\'offres'
+                                },
+                                // Limiter explicitement les marges
+                                ticks: {
+                                    padding: 5,
+                                    maxTicksLimit: 8
+                                }
+                            },
+                            y: {
+                                // Limiter explicitement les étiquettes
+                                ticks: {
+                                    maxTicksLimit: 10,
+                                    callback: function(value, index, values) {
+                                        const label = this.getLabelForValue(value);
+                                        return label.length > 15 ? label.substring(0, 15) + '...' : label;
+                                    },
+                                    padding: 5
+                                }
+                            }
+                        },
+                        // Nouvelle option pour fixer la hauteur
+                        layout: {
+                            padding: {
+                                bottom: 10
+                            }
                         }
                     }
+                });
+                charts.push(competencesChart);
+                <?php endif; ?>
+
+                <?php if (!empty($statistics['repartition_duree'])): ?>
+                // Graphique de répartition par durée avec optimisation de rendu
+                const dureeCtx = document.getElementById('dureeChart').getContext('2d');
+                const dureeChart = new Chart(dureeCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: processedData.duree.map(item => item.duree),
+                        datasets: [{
+                            data: processedData.duree.map(item => item.count),
+                            backgroundColor: [
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)',
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(201, 203, 207, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)',
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(201, 203, 207, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                        const percentage = Math.round((value / total) * 100);
+                                        return `${label}: ${value} offre(s) (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        // Désactive le redimensionnement automatique
+                        layout: {
+                            padding: 10
+                        }
+                    }
+                });
+                charts.push(dureeChart);
+                <?php endif; ?>
+
+                // Retourner les instances pour gestion centralisée
+                return charts;
+            }
+
+            // Créer les graphiques une seule fois
+            const activeCharts = createOptimizedCharts();
+
+            // Fonction de nettoyage pour libérer la mémoire lors de la navigation
+            window.addEventListener('beforeunload', function() {
+                if (activeCharts && activeCharts.length) {
+                    activeCharts.forEach(chart => {
+                        if (chart && typeof chart.destroy === 'function') {
+                            chart.destroy();
+                        }
+                    });
                 }
             });
-            <?php endif; ?>
+
+            // Forcer un rendu final pour éviter les reflows continus
+            setTimeout(function() {
+                document.body.style.height = 'auto';
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
         });
     </script>
 
