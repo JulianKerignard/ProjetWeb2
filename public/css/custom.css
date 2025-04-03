@@ -113,6 +113,7 @@ footer .social-link:hover {
     transform: translateY(-5px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
+
 /* Styles pour la section hero avec image d'arrière-plan */
 .hero-section {
     position: relative;
@@ -143,11 +144,11 @@ footer .social-link:hover {
     z-index: 2;
     padding: 2rem 0;
 }
-/* Fichier: /public/css/custom.css */
 
-/* Styles existants - conservez tout le contenu déjà présent */
-
-/* Correction du problème de chevauchement entre contenu et footer */
+/* ========================================================
+   CORRECTIFS POUR CHEVAUCHEMENT CONTENUS ET FOOTER
+   ======================================================== */
+/* Structure du document */
 html, body {
     height: 100%;
     display: flex;
@@ -160,7 +161,7 @@ body {
 
 main {
     flex: 1 0 auto;
-    padding-bottom: 100px; /* Espace pour éviter le chevauchement avec le footer */
+    padding-bottom: 120px; /* Espace augmenté pour éviter le chevauchement avec le footer */
     position: relative;
     z-index: 1;
 }
@@ -169,19 +170,19 @@ footer {
     flex-shrink: 0;
     position: relative;
     z-index: 2;
-    margin-top: 30px;
+    margin-top: 50px;
     clear: both;
     background-color: #212529;
 }
 
 /* Correctifs spécifiques pour les vues détaillées */
 .detail-view {
-    margin-bottom: 80px;
+    margin-bottom: 100px; /* Espacement augmenté */
 }
 
 /* Correctifs pour les sections "offres similaires" */
 [class*="offres-similaires"],
-.card {
+[class*="card"] {
     position: relative;
     z-index: 1;
     max-width: 100%;
@@ -197,6 +198,14 @@ footer {
     color: white !important;
 }
 
+/* Conteneur spécifique pour les offres similaires */
+.offres-similaires-container {
+    margin-bottom: 60px;
+    position: relative;
+    z-index: 1;
+    clear: both;
+}
+
 /* Styles responsifs pour les écrans plus petits */
 @media (max-width: 768px) {
     .hero-section {
@@ -210,4 +219,20 @@ footer {
     .hero-content p {
         font-size: 1rem;
     }
+
+    /* Espacement supplémentaire sur mobile */
+    .detail-view {
+        margin-bottom: 120px;
+    }
+
+    main {
+        padding-bottom: 140px;
+    }
+}
+
+/* Forcer l'espace correct pour les listes d'options sous le footer */
+.detail-view + div,
+.detail-view ~ div {
+    position: relative;
+    z-index: 1;
 }

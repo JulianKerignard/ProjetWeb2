@@ -218,8 +218,8 @@ $isActive = $dateFin >= $now;
                     </div>
                 </div>
 
-                <!-- Offres similaires -->
-                <div class="card shadow-sm mb-5"> <!-- Ajout de mb-5 pour augmenter la marge en bas -->
+                <!-- Offres similaires - avec la nouvelle classe CSS pour éviter les conflits de z-index -->
+                <div class="card shadow-sm mb-5 offres-similaires-container">
                     <div class="card-header bg-white">
                         <h5 class="mb-0"><i class="fas fa-th-list me-2"></i>Offres similaires</h5>
                     </div>
@@ -243,6 +243,9 @@ $isActive = $dateFin >= $now;
                 </div>
             </div>
         </div>
+
+        <!-- Élément d'espacement pour éviter le chevauchement avec le footer -->
+        <div class="clearfix" style="margin-bottom: 50px;"></div>
     </div>
 
 <?php include ROOT_PATH . '/views/templates/footer.php'; ?>

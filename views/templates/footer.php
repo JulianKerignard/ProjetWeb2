@@ -17,7 +17,7 @@ if (!defined('ROOT_PATH')) {
 </main>
 
 <!-- Footer moderne -->
-<footer class="mt-5"> <!-- Ajout de mt-5 pour augmenter la marge supérieure -->
+<footer class="mt-5">
     <div class="container">
         <div class="row gy-4">
             <div class="col-lg-5 col-md-6">
@@ -81,7 +81,7 @@ if (!defined('ROOT_PATH')) {
 <!-- Scripts personnalisés -->
 <script src="<?php echo URL_ROOT; ?>/public/js/main.js"></script>
 
-<!-- Script pour le bouton back-to-top -->
+<!-- Script pour le bouton back-to-top et gestion du z-index -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Bouton retour en haut
@@ -131,6 +131,25 @@ if (!defined('ROOT_PATH')) {
 
         // Vérification au scroll
         window.addEventListener('scroll', checkAnimation);
+
+        // Correctif pour le problème de chevauchement
+        // Assurons-nous que tous les conteneurs d'offres similaires ont le bon z-index
+        const offresSimilairesContainer = document.querySelector('.offres-similaires');
+        if (offresSimilairesContainer) {
+            offresSimilairesContainer.classList.add('offres-similaires-container');
+        }
+
+        // On force un espace entre les éléments de contenu et le footer
+        const detailView = document.querySelector('.detail-view');
+        if (detailView) {
+            const computedStyle = window.getComputedStyle(detailView);
+            const currentMargin = parseInt(computedStyle.marginBottom);
+
+            // Si la marge est trop faible, on la force à une valeur suffisante
+            if (currentMargin < 100) {
+                detailView.style.marginBottom = '100px';
+            }
+        }
     });
 </script>
 </body>
