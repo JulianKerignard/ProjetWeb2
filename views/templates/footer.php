@@ -53,11 +53,20 @@ if (!defined('ROOT_PATH')) {
 
                 <h5 class="mt-4">Suivez-nous</h5>
                 <div class="social-links mt-3">
-                    <a href="https://www.facebook.com/" class="social-link" title="Facebook"><i class="fab fa-facebook-f"></i></a>
-                    <a href="https://x.com/" class="social-link" title="X"><i class="fab fa-twitter"></i></a>
-                    <a href="https://www.linkedin.com/" class="social-link" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="https://www.instagram.com/" class="social-link" title="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" class="social-link" title="Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="https://x.com/" target="_blank" rel="noopener noreferrer" class="social-link" title="X">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" class="social-link" title="LinkedIn">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" class="social-link" title="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
                 </div>
+
             </div>
         </div>
 
