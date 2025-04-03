@@ -443,47 +443,26 @@ class Entreprise {
     }
 
     /**
-     * Récupère les évaluations d'une entreprise avec pagination
+     * Récupère les évaluations d'une entreprise
      *
      * @param int $entrepriseId ID de l'entreprise
-     * @param int $page Numéro de page actuel
-     * @param int $limit Nombre d'évaluations par page
-     * @return array Tableau contenant les évaluations et le compte total
+     * @return array
      */
-    public function getEvaluationsPaginated($entrepriseId, $page = 1, $limit = 5) {
+    public function getEvaluations($entrepriseId) {
         // Mode dégradé - retourne un tableau vide
         if ($this->dbError) {
-            return ['evaluations' => [], 'total' => 0];
+            return [];
         }
 
         try {
-            // Récupération du nombre total d'évaluations
-            $countQuery = "SELECT COUNT(*) as total 
-                      FROM {$this->evaluationsTable} 
-                      WHERE entreprise_id = :entreprise_id";
-
-            $countStmt = $this->conn->prepare($countQuery);
-            $countStmt->bindParam(':entreprise_id', $entrepriseId, PDO::PARAM_INT);
-            $countStmt->execute();
-
-            $totalRow = $countStmt->fetch(PDO::FETCH_ASSOC);
-            $total = (int)$totalRow['total'];
-
-            // Calcul de l'offset pour la pagination
-            $offset = ($page - 1) * $limit;
-
-            // Requête principale avec pagination
             $query = "SELECT ev.*, e.nom, e.prenom
-                  FROM {$this->evaluationsTable} ev
-                  LEFT JOIN {$this->etudiantsTable} e ON ev.etudiant_id = e.id
-                  WHERE ev.entreprise_id = :entreprise_id
-                  ORDER BY ev.created_at DESC
-                  LIMIT :limit OFFSET :offset";
+                      FROM {$this->evaluationsTable} ev
+                      LEFT JOIN {$this->etudiantsTable} e ON ev.etudiant_id = e.id
+                      WHERE ev.entreprise_id = :entreprise_id
+                      ORDER BY ev.created_at DESC";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':entreprise_id', $entrepriseId, PDO::PARAM_INT);
-            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
             $stmt->execute();
 
             $evaluations = [];
@@ -499,17 +478,12 @@ class Entreprise {
                 ];
             }
 
-            return [
-                'evaluations' => $evaluations,
-                'total' => $total
-            ];
+            return $evaluations;
         } catch (PDOException $e) {
-            error_log("Erreur lors de la récupération des évaluations paginées: " . $e->getMessage());
-            return ['evaluations' => [], 'total' => 0];
+            error_log("Erreur lors de la récupération des évaluations: " . $e->getMessage());
+            return [];
         }
     }
-
-
 
     /**
      * Ajoute une évaluation pour une entreprise
