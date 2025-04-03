@@ -423,3 +423,65 @@ table.table {
 .btn-success#exportButton {
     margin-bottom: 40px;
 }
+
+/* Contraintes dimensionnelles pour les conteneurs de graphiques */
+.chart-container {
+    position: relative;
+    height: 300px !important;
+    max-height: 300px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    contain: size layout !important;
+    margin-bottom: 20px !important;
+}
+
+/* Dimensions explicites pour les éléments canvas */
+canvas.chart-canvas {
+    max-height: 300px !important;
+    height: 300px !important;
+    width: 100% !important;
+    display: block !important;
+}
+
+/* Style pour les cartes contenant des graphiques */
+.card:has(.chart-container) {
+    overflow: hidden !important;
+    contain: content !important;
+    max-height: 450px !important;
+}
+
+/* Conteneur pour les statistiques d'étudiant */
+.student-stats-container {
+    height: auto !important;
+    overflow: visible !important;
+    margin-bottom: 80px !important;
+    padding-bottom: 50px !important;
+    contain: content !important;
+}
+
+/* Élément de séparation pour éviter le chevauchement du footer */
+.stats-footer-spacer {
+    display: block !important;
+    height: 150px !important;
+    width: 100% !important;
+    clear: both !important;
+    visibility: visible !important;
+}
+
+/* Isolation du contexte pour les pages de statistiques */
+body:has(.student-stats-container) footer {
+    position: relative !important;
+    z-index: 999 !important;
+    margin-top: 100px !important;
+}
+
+/* Ajustements responsifs */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 250px !important;
+    }
+
+    .stats-footer-spacer {
+        height: 200px !important;
+    }
+}

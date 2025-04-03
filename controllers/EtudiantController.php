@@ -573,6 +573,9 @@ class EtudiantController {
             ]
         );
 
+        // Ajouter une classe spécifique pour le conteneur des statistiques
+        $containerClass = 'student-stats-container';
+
         // Définir le titre de la page
         $pageTitle = "Statistiques de " . $etudiant['prenom'] . ' ' . $etudiant['nom'];
 
