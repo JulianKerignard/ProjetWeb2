@@ -161,23 +161,24 @@ body {
 
 main {
     flex: 1 0 auto;
-    padding-bottom: 120px; /* Espace augmenté pour éviter le chevauchement avec le footer */
+    padding-bottom: 150px !important; /* Espace augmenté pour éviter le chevauchement avec le footer */
     position: relative;
     z-index: 1;
+    min-height: calc(100vh - 200px); /* Forcer une hauteur minimale */
 }
 
 footer {
     flex-shrink: 0;
-    position: relative;
-    z-index: 2;
-    margin-top: 50px;
-    clear: both;
+    position: relative !important;
+    z-index: 10 !important; /* Z-index supérieur pour éviter le chevauchement */
+    margin-top: 80px !important;
+    clear: both !important; /* Force le clear pour éviter les flottants */
     background-color: #212529;
 }
 
 /* Correctifs spécifiques pour les vues détaillées */
 .detail-view {
-    margin-bottom: 100px; /* Espacement augmenté */
+    margin-bottom: 120px !important; /* Espacement augmenté */
 }
 
 /* Correctifs pour les sections "offres similaires" */
@@ -200,7 +201,7 @@ footer {
 
 /* Conteneur spécifique pour les offres similaires */
 .offres-similaires-container {
-    margin-bottom: 60px;
+    margin-bottom: 100px !important; /* Marge plus importante */
     position: relative;
     z-index: 1;
     clear: both;
@@ -222,11 +223,11 @@ footer {
 
     /* Espacement supplémentaire sur mobile */
     .detail-view {
-        margin-bottom: 120px;
+        margin-bottom: 150px !important;
     }
 
     main {
-        padding-bottom: 140px;
+        padding-bottom: 180px !important;
     }
 }
 
@@ -235,4 +236,19 @@ footer {
 .detail-view ~ div {
     position: relative;
     z-index: 1;
+}
+
+/* Conteneur de séparation explicite avant le footer */
+.footer-spacer {
+    height: 80px;
+    clear: both;
+    display: block;
+    width: 100%;
+    visibility: visible !important;
+}
+
+/* Correctif pour les derniers éléments avant le footer */
+.card:last-child,
+.row:last-child {
+    margin-bottom: 60px !important;
 }

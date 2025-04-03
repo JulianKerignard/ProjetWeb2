@@ -16,8 +16,11 @@ if (!defined('ROOT_PATH')) {
 ?>
 </main>
 
+<!-- Élément de séparation pour garantir le bon flux du document -->
+<div class="clearfix" style="visibility: visible; clear: both; height: 60px;"></div>
+
 <!-- Footer moderne -->
-<footer class="mt-5">
+<footer class="mt-5" style="position: relative; z-index: 10; clear: both;">
     <div class="container">
         <div class="row gy-4">
             <div class="col-lg-5 col-md-6">
@@ -133,22 +136,26 @@ if (!defined('ROOT_PATH')) {
         window.addEventListener('scroll', checkAnimation);
 
         // Correctif pour le problème de chevauchement
-        // Assurons-nous que tous les conteneurs d'offres similaires ont le bon z-index
-        const offresSimilairesContainer = document.querySelector('.offres-similaires');
-        if (offresSimilairesContainer) {
-            offresSimilairesContainer.classList.add('offres-similaires-container');
+        // Forcer la position du footer
+        const footer = document.querySelector('footer');
+        if (footer) {
+            footer.style.position = 'relative';
+            footer.style.zIndex = '10';
+            footer.style.clear = 'both';
         }
 
-        // On force un espace entre les éléments de contenu et le footer
+        // Forcer la visibilité du séparateur
+        const footerSpacer = document.querySelector('.footer-spacer');
+        if (footerSpacer) {
+            footerSpacer.style.display = 'block';
+            footerSpacer.style.visibility = 'visible';
+            footerSpacer.style.height = '80px';
+        }
+
+        // Correctif pour le conteneur de vue détaillée
         const detailView = document.querySelector('.detail-view');
         if (detailView) {
-            const computedStyle = window.getComputedStyle(detailView);
-            const currentMargin = parseInt(computedStyle.marginBottom);
-
-            // Si la marge est trop faible, on la force à une valeur suffisante
-            if (currentMargin < 100) {
-                detailView.style.marginBottom = '100px';
-            }
+            detailView.style.marginBottom = '120px';
         }
     });
 </script>

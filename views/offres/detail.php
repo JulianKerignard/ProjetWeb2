@@ -245,7 +245,10 @@ $isActive = $dateFin >= $now;
         </div>
 
         <!-- Élément d'espacement pour éviter le chevauchement avec le footer -->
-        <div class="clearfix" style="margin-bottom: 50px;"></div>
+        <div class="clearfix" style="margin-bottom: 80px;"></div>
+
+        <!-- Ajout d'un séparateur explicite pour éviter le chevauchement -->
+        <div class="footer-spacer"></div>
     </div>
 
 <?php include ROOT_PATH . '/views/templates/footer.php'; ?>
