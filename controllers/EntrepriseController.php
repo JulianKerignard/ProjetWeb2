@@ -96,32 +96,25 @@ class EntrepriseController {
         $entreprise = $this->entrepriseModel->getById($id);
 
         if (!$entreprise) {
-            // Journalisation de l'erreur d'accès à une entreprise inexistante
-            if (isLoggedIn()) {
-                $this->logManager->warning(
-                    "Tentative d'accès à une entreprise inexistante",
-                    $_SESSION['email'],
-                    ['entreprise_id' => $id]
-                );
-            }
-
             // Redirection vers la liste si entreprise non trouvée
             redirect(url('entreprises'));
         }
 
-        // Journalisation de la consultation détaillée
-        if (isLoggedIn()) {
-            $this->logManager->info(
-                "Consultation du détail d'une entreprise",
-                $_SESSION['email'],
-                [
-                    'entreprise_id' => $id,
-                    'entreprise_nom' => $entreprise['nom']
-                ]
-            );
+        // Gestion de la pagination des évaluations
+        $evalPage = isset($_GET['eval_page']) ? (int)$_GET['eval_page'] : 1;
+        $evalLimit = 5; // Nombre d'évaluations par page
+
+        // Récupération des évaluations paginées si la méthode existe
+        if (method_exists($this->entrepriseModel, 'getEvaluationsPaginated')) {
+            $evaluationsData = $this->entrepriseModel->getEvaluationsPaginated($id, $evalPage, $evalLimit);
+            $entreprise['evaluations'] = $evaluationsData['evaluations'];
+            // Ces valeurs peuvent être utilisées pour construire la pagination
+            $entreprise['evaluations_total'] = $evaluationsData['total'];
+            $entreprise['evaluations_page'] = $evalPage;
+            $entreprise['evaluations_limit'] = $evalLimit;
         }
 
-        // Définir le titre de la page
+        // Titre de la page
         $pageTitle = "Détail de l'entreprise: " . $entreprise['nom'];
 
         // Chargement de la vue

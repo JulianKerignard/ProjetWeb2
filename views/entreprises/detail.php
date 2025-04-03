@@ -192,47 +192,134 @@ include ROOT_PATH . '/views/templates/header.php';
                     </div>
                 </div>
 
-                <!-- Évaluations de l'entreprise -->
-                <?php if (!empty($entreprise['evaluations'])): ?>
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-comments me-2"></i>Évaluations et avis
-                                <span class="text-muted">(<?php echo count($entreprise['evaluations']); ?>)</span>
-                            </h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
+                <!-- Évaluations de l'entreprise avec pagination -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-comments me-2"></i>Évaluations et avis
+                            <span class="text-muted">(<?php echo $entreprise['nb_evaluations'] ?? 0; ?>)</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($entreprise['evaluations'])): ?>
+                            <div class="alert alert-info">
+                                Aucune évaluation pour cette entreprise pour le moment.
+                            </div>
+                            <?php if (checkAccess('entreprise_evaluer')): ?>
+                                <a href="<?php echo url('entreprises', 'evaluer', ['id' => $entreprise['id']]); ?>" class="btn btn-primary">
+                                    <i class="fas fa-star me-2"></i>Soyez le premier à évaluer cette entreprise
+                                </a>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="evaluations-container">
                                 <?php foreach ($entreprise['evaluations'] as $evaluation): ?>
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <div>
-                                                <span class="fw-bold"><?php echo htmlspecialchars($evaluation['etudiant_prenom'] . ' ' . $evaluation['etudiant_nom']); ?></span>
-                                                <small class="text-muted ms-2"><?php echo (new DateTime($evaluation['created_at']))->format('d/m/Y'); ?></small>
-                                            </div>
-                                            <div class="stars">
-                                                <?php
-                                                $rating = $evaluation['note'];
-                                                for ($i = 1; $i <= 5; $i++) {
-                                                    if ($i <= $rating) {
-                                                        echo '<i class="fas fa-star text-warning"></i>';
-                                                    } else {
-                                                        echo '<i class="far fa-star text-muted"></i>';
+                                    <div class="evaluation-item card mb-3">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div>
+                                                    <span class="fw-bold"><?php echo htmlspecialchars($evaluation['etudiant_prenom'] . ' ' . $evaluation['etudiant_nom']); ?></span>
+                                                    <small class="text-muted ms-2"><?php echo (new DateTime($evaluation['created_at']))->format('d/m/Y'); ?></small>
+                                                </div>
+                                                <div class="stars">
+                                                    <?php
+                                                    $rating = $evaluation['note'];
+                                                    for ($i = 1; $i <= 5; $i++) {
+                                                        if ($i <= $rating) {
+                                                            echo '<i class="fas fa-star text-warning"></i>';
+                                                        } else {
+                                                            echo '<i class="far fa-star text-muted"></i>';
+                                                        }
                                                     }
-                                                }
-                                                ?>
+                                                    ?>
+                                                </div>
                                             </div>
+                                            <p class="mb-0 detail-text"><?php echo nl2br(htmlspecialchars($evaluation['commentaire'])); ?></p>
                                         </div>
-                                        <p class="mb-0 detail-text"><?php echo nl2br(htmlspecialchars($evaluation['commentaire'])); ?></p>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Nouvel élément d'espacement après les évaluations -->
-                    <div class="evaluation-spacer"></div>
-                <?php endif; ?>
+                            <?php
+                            // Paramètres de pagination
+                            $currentPage = isset($_GET['eval_page']) ? (int)$_GET['eval_page'] : 1;
+                            $limit = 5; // Nombre d'évaluations par page
+                            $totalItems = $entreprise['nb_evaluations'];
+                            $totalPages = ceil($totalItems / $limit);
+
+                            // Affichage de la pagination si nécessaire
+                            if ($totalPages > 1):
+                                ?>
+                                <div class="d-flex justify-content-center mt-4">
+                                    <nav aria-label="Pagination des évaluations">
+                                        <ul class="pagination">
+                                            <?php if ($currentPage > 1): ?>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="<?php echo url('entreprises', 'detail', ['id' => $entreprise['id'], 'eval_page' => $currentPage - 1]); ?>" aria-label="Précédent">
+                                                        <span aria-hidden="true">&laquo;</span>
+                                                    </a>
+                                                </li>
+                                            <?php else: ?>
+                                                <li class="page-item disabled">
+                                                    <span class="page-link" aria-hidden="true">&laquo;</span>
+                                                </li>
+                                            <?php endif; ?>
+
+                                            <?php
+                                            // Calcul des pages à afficher
+                                            $startPage = max(1, min($currentPage - 2, $totalPages - 4));
+                                            $endPage = min($totalPages, max($currentPage + 2, 5));
+
+                                            // Première page + ellipsis si nécessaire
+                                            if ($startPage > 1): ?>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="<?php echo url('entreprises', 'detail', ['id' => $entreprise['id'], 'eval_page' => 1]); ?>">1</a>
+                                                </li>
+                                                <?php if ($startPage > 2): ?>
+                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+
+                                            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                                <li class="page-item <?php echo ($i == $currentPage) ? 'active' : ''; ?>">
+                                                    <a class="page-link" href="<?php echo url('entreprises', 'detail', ['id' => $entreprise['id'], 'eval_page' => $i]); ?>"><?php echo $i; ?></a>
+                                                </li>
+                                            <?php endfor; ?>
+
+                                            <?php if ($endPage < $totalPages): ?>
+                                                <?php if ($endPage < $totalPages - 1): ?>
+                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="<?php echo url('entreprises', 'detail', ['id' => $entreprise['id'], 'eval_page' => $totalPages]); ?>"><?php echo $totalPages; ?></a>
+                                                </li>
+                                            <?php endif; ?>
+
+                                            <?php if ($currentPage < $totalPages): ?>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="<?php echo url('entreprises', 'detail', ['id' => $entreprise['id'], 'eval_page' => $currentPage + 1]); ?>" aria-label="Suivant">
+                                                        <span aria-hidden="true">&raquo;</span>
+                                                    </a>
+                                                </li>
+                                            <?php else: ?>
+                                                <li class="page-item disabled">
+                                                    <span class="page-link" aria-hidden="true">&raquo;</span>
+                                                </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if (checkAccess('entreprise_evaluer')): ?>
+                                <div class="mt-3 text-center">
+                                    <a href="<?php echo url('entreprises', 'evaluer', ['id' => $entreprise['id']]); ?>" class="btn btn-primary evaluation-btn">
+                                        <i class="fas fa-star me-2"></i>Évaluer cette entreprise
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
 
             <!-- Sidebar avec informations complémentaires -->
@@ -296,9 +383,6 @@ include ROOT_PATH . '/views/templates/header.php';
                 </div>
             </div>
         </div>
-
-        <!-- Élément sentinelle pour éviter le chevauchement avec le footer -->
-        <div id="footer-sentinel" class="mb-5 mt-4 w-100" style="height: 100px; display: block; clear: both;"></div>
     </div>
 
 <?php include ROOT_PATH . '/views/templates/footer.php'; ?>
