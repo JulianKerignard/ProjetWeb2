@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : localhost:3306
--- Généré le : mer. 02 avr. 2025 à 19:55
+-- Généré le : jeu. 03 avr. 2025 à 17:31
 -- Version du serveur : 8.0.41-0ubuntu0.24.04.1
 -- Version de PHP : 8.3.6
 
@@ -159,7 +159,7 @@ CREATE TABLE `etudiants` (
   `prenom` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `centre_id` int DEFAULT NULL
+  `centre_id` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -167,10 +167,10 @@ CREATE TABLE `etudiants` (
 --
 
 INSERT INTO `etudiants` (`id`, `user_id`, `nom`, `prenom`, `created_at`, `updated_at`, `centre_id`) VALUES
-(1, 4, 'Leroy', 'Julie', '2025-04-01 13:51:16', '2025-04-02 08:33:45', NULL),
-(2, 5, 'Petit', 'Lucas', '2025-04-01 13:51:16', '2025-04-01 13:51:16', NULL),
-(3, 6, 'Moreau', 'Emma', '2025-04-01 13:51:16', '2025-04-01 13:51:16', NULL),
-(4, 8, 'momo', 'momo', '2025-04-01 21:01:50', '2025-04-01 21:01:50', NULL);
+(1, 4, 'Leroy', 'Julie', '2025-04-01 13:51:16', '2025-04-03 08:24:42', 1),
+(2, 5, 'Petit', 'Lucas', '2025-04-01 13:51:16', '2025-04-02 22:03:21', 2),
+(3, 6, 'Moreau', 'Emma', '2025-04-01 13:51:16', '2025-04-03 08:32:47', 5),
+(4, 8, 'momo', 'momo', '2025-04-01 21:01:50', '2025-04-03 08:31:51', 5);
 
 -- --------------------------------------------------------
 
@@ -310,7 +310,7 @@ CREATE TABLE `pilotes` (
 --
 
 INSERT INTO `pilotes` (`id`, `user_id`, `nom`, `prenom`, `created_at`, `updated_at`, `centre_id`) VALUES
-(3, 7, 'krg', 'Julian', '2025-04-01 20:57:43', '2025-04-02 21:51:34', 5);
+(3, 7, 'krg', 'Julian', '2025-04-01 20:57:43', '2025-04-03 08:30:17', 5);
 
 -- --------------------------------------------------------
 
@@ -330,6 +330,20 @@ CREATE TABLE `pilote_etudiant` (
 
 INSERT INTO `pilote_etudiant` (`pilote_id`, `etudiant_id`, `date_attribution`) VALUES
 (3, 1, '2025-04-02 21:50:43');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `role_permissions`
+--
+
+CREATE TABLE `role_permissions` (
+  `id` int NOT NULL,
+  `role` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `permission` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -587,7 +601,148 @@ INSERT INTO `system_logs` (`id`, `timestamp`, `user`, `action`, `ip`, `level`, `
 (232, '2025-04-02 19:50:57', 'admin@web4all.fr', 'Consultation des étudiants assignés à un pilote', '83.115.83.6', 'INFO', '{\"pilote_id\":3,\"pilote_nom\":\"krg\",\"nb_etudiants\":1}', '2025-04-02 19:50:57'),
 (233, '2025-04-02 19:51:13', 'admin@web4all.fr', 'Consultation des détails d\'un pilote', '83.115.83.6', 'INFO', '{\"pilote_id\":3,\"pilote_nom\":\"krg\"}', '2025-04-02 19:51:13'),
 (234, '2025-04-02 19:51:18', 'admin@web4all.fr', 'Modification d\'un pilote', '83.115.83.6', 'SUCCESS', '{\"pilote_id\":3,\"pilote_nom\":\"krg\",\"pilote_centre_id\":5}', '2025-04-02 19:51:18'),
-(235, '2025-04-02 19:51:34', 'admin@web4all.fr', 'Modification d\'un pilote', '83.115.83.6', 'SUCCESS', '{\"pilote_id\":3,\"pilote_nom\":\"krg\",\"pilote_centre_id\":5}', '2025-04-02 19:51:34');
+(235, '2025-04-02 19:51:34', 'admin@web4all.fr', 'Modification d\'un pilote', '83.115.83.6', 'SUCCESS', '{\"pilote_id\":3,\"pilote_nom\":\"krg\",\"pilote_centre_id\":5}', '2025-04-02 19:51:34'),
+(236, '2025-04-02 20:10:05', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-02 20:10:05\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-02 20:10:05'),
+(237, '2025-04-02 20:10:05', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-02 20:10:05'),
+(238, '2025-04-02 20:10:06', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-02 20:10:06\",\"request_uri\":\"\\/index.php?page=admin&action=logs\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-02 20:10:06'),
+(239, '2025-04-02 20:10:06', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"logs\"}', '2025-04-02 20:10:06'),
+(240, '2025-04-02 20:10:06', 'admin@web4all.fr', 'Consultation des journaux d\'activité', '83.115.83.6', 'INFO', '{\"filters\":[],\"page\":1}', '2025-04-02 20:10:06'),
+(241, '2025-04-02 20:10:15', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-02 20:10:15\",\"request_uri\":\"\\/index.php?page=admin&action=add-test-logs\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-02 20:10:15'),
+(242, '2025-04-02 20:10:15', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"add-test-logs\"}', '2025-04-02 20:10:15'),
+(243, '2025-04-02 22:10:15', 'admin@web4all.fr', 'Test log insertion', '83.115.83.6', 'INFO', NULL, '2025-04-02 20:10:15');
+INSERT INTO `system_logs` (`id`, `timestamp`, `user`, `action`, `ip`, `level`, `context`, `created_at`) VALUES
+(244, '2025-04-02 22:10:15', 'admin@web4all.fr', 'Consultation des logs de test', '83.115.83.6', 'INFO', NULL, '2025-04-02 20:10:15'),
+(245, '2025-04-02 22:10:15', 'admin@web4all.fr', 'Action de test réussie', '83.115.83.6', 'SUCCESS', NULL, '2025-04-02 20:10:15'),
+(246, '2025-04-02 20:10:17', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-02 20:10:17\",\"request_uri\":\"\\/index.php?page=admin&action=logs\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-02 20:10:17'),
+(247, '2025-04-02 20:10:17', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"logs\"}', '2025-04-02 20:10:17'),
+(248, '2025-04-02 20:10:17', 'admin@web4all.fr', 'Consultation des journaux d\'activité', '83.115.83.6', 'INFO', '{\"filters\":[],\"page\":1}', '2025-04-02 20:10:17'),
+(249, '2025-04-02 20:27:13', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-02 20:27:13'),
+(250, '2025-04-02 20:27:16', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-02 20:27:16'),
+(251, '2025-04-02 20:27:19', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-02 20:27:19'),
+(252, '2025-04-02 20:27:21', 'admin@web4all.fr', 'Consultation des détails d\'un étudiant', '83.115.83.6', 'INFO', '{\"etudiant_id\":1,\"etudiant_nom\":\"Leroy Julie\"}', '2025-04-02 20:27:21'),
+(253, '2025-04-03 06:21:38', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:21:38\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:21:38'),
+(254, '2025-04-03 06:21:38', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 06:21:38'),
+(255, '2025-04-03 06:21:39', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:21:39\",\"request_uri\":\"\\/index.php?page=admin&action=logs\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:21:39'),
+(256, '2025-04-03 06:21:39', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"logs\"}', '2025-04-03 06:21:39'),
+(257, '2025-04-03 06:21:39', 'admin@web4all.fr', 'Consultation des journaux d\'activité', '83.115.83.6', 'INFO', '{\"filters\":[],\"page\":1}', '2025-04-03 06:21:39'),
+(258, '2025-04-03 06:21:44', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:21:44\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:21:44'),
+(259, '2025-04-03 06:21:44', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 06:21:44'),
+(260, '2025-04-03 06:21:46', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:21:46\",\"request_uri\":\"\\/index.php?page=admin&action=maintenance\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:21:46'),
+(261, '2025-04-03 06:21:46', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"maintenance\"}', '2025-04-03 06:21:46'),
+(262, '2025-04-03 06:21:53', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:21:53\",\"request_uri\":\"\\/index.php?page=admin&action=logs\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:21:53'),
+(263, '2025-04-03 06:21:53', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"logs\"}', '2025-04-03 06:21:53'),
+(264, '2025-04-03 06:21:54', 'admin@web4all.fr', 'Consultation des journaux d\'activité', '83.115.83.6', 'INFO', '{\"filters\":[],\"page\":1}', '2025-04-03 06:21:54'),
+(265, '2025-04-03 06:21:55', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:21:55\",\"request_uri\":\"\\/index.php?page=admin&action=maintenance\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:21:55'),
+(266, '2025-04-03 06:21:55', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"maintenance\"}', '2025-04-03 06:21:55'),
+(267, '2025-04-03 06:22:23', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-03 06:22:23'),
+(268, '2025-04-03 06:24:35', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-03 06:24:35'),
+(269, '2025-04-03 06:24:36', 'admin@web4all.fr', 'Consultation des détails d\'un étudiant', '83.115.83.6', 'INFO', '{\"etudiant_id\":1,\"etudiant_nom\":\"Leroy Julie\"}', '2025-04-03 06:24:36'),
+(270, '2025-04-03 06:24:38', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-03 06:24:38'),
+(271, '2025-04-03 06:24:42', 'admin@web4all.fr', 'Modification d\'un étudiant', '83.115.83.6', 'SUCCESS', '{\"etudiant_id\":1,\"etudiant_nom\":\"Leroy Julie\",\"etudiant_centre_id\":1}', '2025-04-03 06:24:42'),
+(272, '2025-04-03 06:30:17', 'admin@web4all.fr', 'Modification d\'un pilote', '83.115.83.6', 'SUCCESS', '{\"pilote_id\":3,\"pilote_nom\":\"krg\",\"pilote_centre_id\":5}', '2025-04-03 06:30:17'),
+(273, '2025-04-03 06:30:27', 'jujukerignard@gmail.com', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":{\"pilote_centre_id\":5},\"results_count\":1}', '2025-04-03 06:30:27'),
+(274, '2025-04-03 06:30:37', 'jujukerignard@gmail.com', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":{\"pilote_centre_id\":5},\"results_count\":1}', '2025-04-03 06:30:37'),
+(275, '2025-04-03 06:31:42', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-03 06:31:42'),
+(276, '2025-04-03 06:31:44', 'admin@web4all.fr', 'Consultation des détails d\'un étudiant', '83.115.83.6', 'INFO', '{\"etudiant_id\":4,\"etudiant_nom\":\"momo momo\"}', '2025-04-03 06:31:44'),
+(277, '2025-04-03 06:31:51', 'admin@web4all.fr', 'Modification d\'un étudiant', '83.115.83.6', 'SUCCESS', '{\"etudiant_id\":4,\"etudiant_nom\":\"momo momo\",\"etudiant_centre_id\":5}', '2025-04-03 06:31:51'),
+(278, '2025-04-03 06:31:56', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-03 06:31:56'),
+(279, '2025-04-03 06:32:47', 'admin@web4all.fr', 'Modification d\'un étudiant', '83.115.83.6', 'SUCCESS', '{\"etudiant_id\":3,\"etudiant_nom\":\"Moreau Emma\",\"etudiant_centre_id\":5}', '2025-04-03 06:32:47'),
+(280, '2025-04-03 06:32:56', 'jujukerignard@gmail.com', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":{\"pilote_centre_id\":5},\"results_count\":2}', '2025-04-03 06:32:56'),
+(281, '2025-04-03 06:36:45', 'jujukerignard@gmail.com', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":{\"pilote_centre_id\":5},\"results_count\":2}', '2025-04-03 06:36:45'),
+(282, '2025-04-03 06:37:36', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 06:37:36'),
+(283, '2025-04-03 06:39:56', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:39:56\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:39:56'),
+(284, '2025-04-03 06:39:56', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 06:39:56'),
+(285, '2025-04-03 06:40:15', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 06:40:15\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 06:40:15'),
+(286, '2025-04-03 06:40:15', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 06:40:15'),
+(287, '2025-04-03 06:40:43', 'admin@web4all.fr', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 06:40:43'),
+(288, '2025-04-03 06:41:40', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 06:41:40'),
+(289, '2025-04-03 06:54:06', 'admin@web4all.fr', 'Recherche avancée d\'entreprises', '83.115.83.6', 'INFO', '{\"filters\":[],\"results_count\":9}', '2025-04-03 06:54:06'),
+(290, '2025-04-03 06:54:15', 'admin@web4all.fr', 'Recherche avancée d\'entreprises', '83.115.83.6', 'INFO', '{\"filters\":{\"order_by\":\"e.nom\",\"order_dir\":\"DESC\"},\"results_count\":9}', '2025-04-03 06:54:15'),
+(291, '2025-04-03 06:54:21', 'admin@web4all.fr', 'Recherche avancée d\'entreprises', '83.115.83.6', 'INFO', '{\"filters\":{\"order_by\":\"e.nom\",\"order_dir\":\"ASC\"},\"results_count\":9}', '2025-04-03 06:54:21'),
+(292, '2025-04-03 06:54:30', 'admin@web4all.fr', 'Consultation du détail d\'une entreprise', '83.115.83.6', 'INFO', '{\"entreprise_id\":3,\"entreprise_nom\":\"DataCorp\"}', '2025-04-03 06:54:30'),
+(293, '2025-04-03 07:23:44', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 07:23:44'),
+(294, '2025-04-03 07:23:46', 'admin@web4all.fr', 'Consultation du détail d\'une offre', '83.115.83.6', 'INFO', '{\"offre_id\":13,\"offre_titre\":\"momoprout\",\"entreprise_id\":7,\"entreprise_nom\":\"Momo&amp;Co\"}', '2025-04-03 07:23:46'),
+(295, '2025-04-03 07:23:49', 'admin@web4all.fr', 'Recherche avancée d\'offres', '83.115.83.6', 'INFO', '{\"filters\":{\"page\":\"offres\",\"action\":\"rechercher\",\"competence_id\":\"6\"}}', '2025-04-03 07:23:49'),
+(296, '2025-04-03 07:23:49', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":{\"competence_id\":6},\"results_count\":1}', '2025-04-03 07:23:49'),
+(297, '2025-04-03 07:23:50', 'admin@web4all.fr', 'Consultation du détail d\'une offre', '83.115.83.6', 'INFO', '{\"offre_id\":13,\"offre_titre\":\"momoprout\",\"entreprise_id\":7,\"entreprise_nom\":\"Momo&amp;Co\"}', '2025-04-03 07:23:50'),
+(298, '2025-04-03 07:23:53', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 07:23:53\",\"request_uri\":\"\\/index.php?page=admin&action=stats\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 07:23:53'),
+(299, '2025-04-03 07:23:53', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"stats\"}', '2025-04-03 07:23:53'),
+(300, '2025-04-03 07:24:10', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 07:24:10\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 07:24:10'),
+(301, '2025-04-03 07:24:10', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 07:24:10'),
+(302, '2025-04-03 07:24:12', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 07:24:12\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 07:24:12'),
+(303, '2025-04-03 07:24:12', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 07:24:12'),
+(304, '2025-04-03 07:36:45', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 07:36:45'),
+(305, '2025-04-03 07:36:50', 'admin@web4all.fr', 'Consultation des statistiques des offres', '83.115.83.6', 'INFO', NULL, '2025-04-03 07:36:50'),
+(306, '2025-04-03 07:36:54', 'admin@web4all.fr', 'Consultation du détail d\'une offre', '83.115.83.6', 'INFO', '{\"offre_id\":1,\"offre_titre\":\"D\\u00e9veloppeur Web Full Stack\",\"entreprise_id\":1,\"entreprise_nom\":\"TechSolutions\"}', '2025-04-03 07:36:54'),
+(307, '2025-04-03 07:37:01', 'admin@web4all.fr', 'Consultation du détail d\'une entreprise', '83.115.83.6', 'INFO', '{\"entreprise_id\":1,\"entreprise_nom\":\"TechSolutions\"}', '2025-04-03 07:37:01'),
+(308, '2025-04-03 07:39:25', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 07:39:25'),
+(309, '2025-04-03 07:39:27', 'admin@web4all.fr', 'Consultation du détail d\'une offre', '83.115.83.6', 'INFO', '{\"offre_id\":15,\"offre_titre\":\"testlog\",\"entreprise_id\":2,\"entreprise_nom\":\"InnovaDigital\"}', '2025-04-03 07:39:27'),
+(310, '2025-04-03 07:39:44', 'admin@web4all.fr', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 07:39:44'),
+(311, '2025-04-03 07:39:45', 'admin@web4all.fr', 'Consultation du détail d\'une entreprise', '83.115.83.6', 'INFO', '{\"entreprise_id\":3,\"entreprise_nom\":\"DataCorp\"}', '2025-04-03 07:39:45'),
+(312, '2025-04-03 11:45:40', 'admin@web4all.fr', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 11:45:40'),
+(313, '2025-04-03 11:45:41', 'admin@web4all.fr', 'Consultation du détail d\'une entreprise', '83.115.83.6', 'INFO', '{\"entreprise_id\":3,\"entreprise_nom\":\"DataCorp\"}', '2025-04-03 11:45:41'),
+(314, '2025-04-03 11:47:02', 'admin@web4all.fr', 'Consultation de la liste des entreprises', '91.169.248.206', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 11:47:02'),
+(315, '2025-04-03 11:47:04', 'admin@web4all.fr', 'Consultation des offres de stage', '91.169.248.206', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 11:47:04'),
+(316, '2025-04-03 11:47:12', 'admin@web4all.fr', 'Consultation des statistiques des offres', '91.169.248.206', 'INFO', NULL, '2025-04-03 11:47:12'),
+(317, '2025-04-03 11:47:30', 'admin@web4all.fr', 'Consultation de la liste des étudiants', '91.169.248.206', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":4}', '2025-04-03 11:47:30'),
+(318, '2025-04-03 12:32:19', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 12:32:19'),
+(319, '2025-04-03 12:32:20', 'admin@web4all.fr', 'Consultation du détail d\'une offre', '83.115.83.6', 'INFO', '{\"offre_id\":15,\"offre_titre\":\"testlog\",\"entreprise_id\":2,\"entreprise_nom\":\"InnovaDigital\"}', '2025-04-03 12:32:20'),
+(320, '2025-04-03 12:41:11', 'admin@web4all.fr', 'Consultation du détail d\'une offre', '83.115.83.6', 'INFO', '{\"offre_id\":15,\"offre_titre\":\"testlog\",\"entreprise_id\":2,\"entreprise_nom\":\"InnovaDigital\"}', '2025-04-03 12:41:11'),
+(321, '2025-04-03 12:41:14', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 12:41:14'),
+(322, '2025-04-03 14:04:24', NULL, 'Tentative d\'accès non authentifiée à une action protégée: entreprises/rechercher', '91.169.248.206', 'WARNING', '{\"ip\":\"91.169.248.206\"}', '2025-04-03 14:04:24'),
+(323, '2025-04-03 14:04:52', NULL, 'Tentative d\'accès non authentifiée à une action protégée: entreprises/rechercher', '91.169.248.206', 'WARNING', '{\"ip\":\"91.169.248.206\"}', '2025-04-03 14:04:52'),
+(324, '2025-04-03 14:10:59', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '37.165.206.167', 'INFO', '{\"timestamp\":\"2025-04-03 14:10:59\",\"request_uri\":\"\\/index.php?page=admin&action=stats\",\"user_agent\":\"Mozilla\\/5.0 (iPhone; CPU iPhone OS 18_3_1 like Mac OS X) AppleWebKit\\/605.1.15 (KHTML, like Gecko) Version\\/18.3 Mobile\\/15E148 Safari\\/604.1\"}', '2025-04-03 14:10:59'),
+(325, '2025-04-03 14:10:59', 'admin@web4all.fr', 'Accès au panel d\'administration', '37.165.206.167', 'INFO', '{\"section\":\"stats\"}', '2025-04-03 14:10:59'),
+(326, '2025-04-03 14:11:09', 'admin@web4all.fr', 'Consultation des statistiques des offres', '37.165.206.167', 'INFO', NULL, '2025-04-03 14:11:09'),
+(327, '2025-04-03 16:29:56', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:29:56\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:29:56'),
+(328, '2025-04-03 16:29:56', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 16:29:56'),
+(329, '2025-04-03 16:29:58', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:29:58\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:29:58'),
+(330, '2025-04-03 16:29:58', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:29:58'),
+(331, '2025-04-03 16:39:16', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 16:39:16'),
+(332, '2025-04-03 16:39:20', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:39:20\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:39:20'),
+(333, '2025-04-03 16:39:20', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 16:39:20'),
+(334, '2025-04-03 16:39:28', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:39:28\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:39:28'),
+(335, '2025-04-03 16:39:28', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:39:28'),
+(336, '2025-04-03 16:43:28', 'jujukerignard@gmail.com', 'Consultation de la liste des étudiants', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":{\"pilote_centre_id\":5},\"results_count\":2}', '2025-04-03 16:43:28'),
+(337, '2025-04-03 16:43:46', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:43:46\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:43:46'),
+(338, '2025-04-03 16:43:46', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 16:43:46'),
+(339, '2025-04-03 16:43:47', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:43:47\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:43:47'),
+(340, '2025-04-03 16:43:47', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:43:47'),
+(341, '2025-04-03 16:43:56', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:43:56\",\"request_uri\":\"\\/index.php?page=admin&action=save-permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:43:56'),
+(342, '2025-04-03 16:43:56', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"save-permissions\"}', '2025-04-03 16:43:56'),
+(343, '2025-04-03 16:48:20', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:48:20\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:48:20'),
+(344, '2025-04-03 16:48:20', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 16:48:20'),
+(345, '2025-04-03 16:48:22', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:48:22\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:48:22'),
+(346, '2025-04-03 16:48:22', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:48:22'),
+(347, '2025-04-03 16:48:25', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:48:25\",\"request_uri\":\"\\/index.php?page=admin&action=save-permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:48:25'),
+(348, '2025-04-03 16:48:25', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"save-permissions\"}', '2025-04-03 16:48:25'),
+(349, '2025-04-03 16:49:15', 'admin@web4all.fr', 'Modification des permissions', '83.115.83.6', 'SUCCESS', '{\"roles\":[\"pilote\",\"etudiant\"]}', '2025-04-03 16:49:15'),
+(350, '2025-04-03 16:49:18', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:49:18\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:49:18'),
+(351, '2025-04-03 16:49:19', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 16:49:19'),
+(352, '2025-04-03 16:49:20', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:49:20\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:49:20'),
+(353, '2025-04-03 16:49:20', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:49:20'),
+(354, '2025-04-03 16:49:23', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:49:23\",\"request_uri\":\"\\/index.php?page=admin&action=save-permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:49:23'),
+(355, '2025-04-03 16:49:23', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"save-permissions\"}', '2025-04-03 16:49:23'),
+(356, '2025-04-03 16:49:47', 'admin@web4all.fr', 'Modification des permissions', '83.115.83.6', 'SUCCESS', '{\"roles\":[\"pilote\",\"etudiant\"]}', '2025-04-03 16:49:47'),
+(357, '2025-04-03 16:50:13', 'admin@web4all.fr', 'Modification des permissions', '83.115.83.6', 'SUCCESS', '{\"roles\":[\"pilote\",\"etudiant\"]}', '2025-04-03 16:50:13'),
+(358, '2025-04-03 16:50:13', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:50:13\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:50:13'),
+(359, '2025-04-03 16:50:13', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:50:13'),
+(360, '2025-04-03 16:52:16', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:52:16\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36 Edg\\/134.0.0.0\"}', '2025-04-03 16:52:16'),
+(361, '2025-04-03 16:52:16', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:52:16'),
+(362, '2025-04-03 16:52:54', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:52:54\",\"request_uri\":\"\\/index.php?page=admin\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:52:54'),
+(363, '2025-04-03 16:52:54', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"index\"}', '2025-04-03 16:52:54'),
+(364, '2025-04-03 16:52:55', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:52:55\",\"request_uri\":\"\\/index.php?page=admin&action=permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:52:55'),
+(365, '2025-04-03 16:52:55', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"permissions\"}', '2025-04-03 16:52:55'),
+(366, '2025-04-03 16:53:01', 'admin@web4all.fr', 'AUDIT: Initialisation du système de logs', '83.115.83.6', 'INFO', '{\"timestamp\":\"2025-04-03 16:53:01\",\"request_uri\":\"\\/index.php?page=admin&action=save-permissions\",\"user_agent\":\"Mozilla\\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\\/537.36 (KHTML, like Gecko) Chrome\\/134.0.0.0 Safari\\/537.36\"}', '2025-04-03 16:53:01'),
+(367, '2025-04-03 16:53:01', 'admin@web4all.fr', 'Accès au panel d\'administration', '83.115.83.6', 'INFO', '{\"section\":\"save-permissions\"}', '2025-04-03 16:53:01'),
+(368, '2025-04-03 16:56:21', 'admin@web4all.fr', 'Modification des permissions', '83.115.83.6', 'SUCCESS', '{\"roles\":[\"pilote\",\"etudiant\"]}', '2025-04-03 16:56:21'),
+(369, '2025-04-03 16:56:21', 'admin@web4all.fr', 'Consultation des offres de stage', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":10}', '2025-04-03 16:56:21'),
+(370, '2025-04-03 16:56:52', 'admin@web4all.fr', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 16:56:52'),
+(371, '2025-04-03 16:56:53', 'admin@web4all.fr', 'Consultation du détail d\'une entreprise', '83.115.83.6', 'INFO', '{\"entreprise_id\":3,\"entreprise_nom\":\"DataCorp\"}', '2025-04-03 16:56:53'),
+(372, '2025-04-03 16:57:15', 'admin@web4all.fr', 'Consultation du détail d\'une entreprise', '83.115.83.6', 'INFO', '{\"entreprise_id\":3,\"entreprise_nom\":\"DataCorp\"}', '2025-04-03 16:57:15'),
+(373, '2025-04-03 17:28:51', 'jujukerignard@gmail.com', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 17:28:51'),
+(374, '2025-04-03 17:28:55', 'jujukerignard@gmail.com', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 17:28:55'),
+(375, '2025-04-03 17:29:11', 'jujukerignard@gmail.com', 'Consultation de la liste des entreprises', '83.115.83.6', 'INFO', '{\"page\":1,\"filters\":[],\"results_count\":9}', '2025-04-03 17:29:11');
 
 -- --------------------------------------------------------
 
@@ -609,12 +764,12 @@ CREATE TABLE `utilisateurs` (
 --
 
 INSERT INTO `utilisateurs` (`id`, `email`, `password`, `role`, `created_at`, `updated_at`) VALUES
-(1, 'admin@web4all.fr', '$2y$10$9YVz9SFamkBKOS1lu1TNnuy8VXaiWclTM6T4pqQrk7GDi1YITsJYW', 'admin', '2025-04-01 13:51:16', '2025-04-02 21:30:21'),
-(4, 'etudiant1@web4all.fr', '$2y$10$3OQWJkIKv2AE2dGBTWJy7.MwQ9hGUJbD3pdL7dFBVXHPSGG8mhUKy', 'etudiant', '2025-04-01 13:51:16', '2025-04-02 08:33:45'),
+(1, 'admin@web4all.fr', '$2y$10$w702Wg/IHNhUyr9o2HCgF.y.ViY5KuGwHjBiiS29V8jQK0x3G9pSG', 'admin', '2025-04-01 13:51:16', '2025-04-03 18:56:49'),
+(4, 'etudiant1@web4all.fr', '$2y$10$3OQWJkIKv2AE2dGBTWJy7.MwQ9hGUJbD3pdL7dFBVXHPSGG8mhUKy', 'etudiant', '2025-04-01 13:51:16', '2025-04-03 08:24:42'),
 (5, 'etudiant2@web4all.fr', '$2y$10$3OQWJkIKv2AE2dGBTWJy7.MwQ9hGUJbD3pdL7dFBVXHPSGG8mhUKy', 'etudiant', '2025-04-01 13:51:16', '2025-04-01 13:51:16'),
-(6, 'etudiant3@web4all.fr', '$2y$10$3OQWJkIKv2AE2dGBTWJy7.MwQ9hGUJbD3pdL7dFBVXHPSGG8mhUKy', 'etudiant', '2025-04-01 13:51:16', '2025-04-01 13:51:16'),
-(7, 'jujukerignard@gmail.com', '$2y$10$XSMQBTp0cDfo/IoNG65r5.hdpFA.c2EIGeQ0N4uoPBGbvV6G.w9WK', 'pilote', '2025-04-01 20:57:43', '2025-04-02 21:51:34'),
-(8, 'momo@gmail.com', '$2y$12$e.s2IOACmiTC/2vsYiK3g.9PAraxXZpYgw5je7zXesC24fSqjHNci', 'etudiant', '2025-04-01 21:01:50', '2025-04-02 08:51:02');
+(6, 'etudiant3@web4all.fr', '$2y$10$3OQWJkIKv2AE2dGBTWJy7.MwQ9hGUJbD3pdL7dFBVXHPSGG8mhUKy', 'etudiant', '2025-04-01 13:51:16', '2025-04-03 08:32:47'),
+(7, 'jujukerignard@gmail.com', '$2y$10$XSMQBTp0cDfo/IoNG65r5.hdpFA.c2EIGeQ0N4uoPBGbvV6G.w9WK', 'pilote', '2025-04-01 20:57:43', '2025-04-03 08:30:17'),
+(8, 'momo@gmail.com', '$2y$12$e.s2IOACmiTC/2vsYiK3g.9PAraxXZpYgw5je7zXesC24fSqjHNci', 'etudiant', '2025-04-01 21:01:50', '2025-04-03 08:31:51');
 
 -- --------------------------------------------------------
 
@@ -727,6 +882,13 @@ ALTER TABLE `pilote_etudiant`
   ADD KEY `etudiant_id` (`etudiant_id`);
 
 --
+-- Index pour la table `role_permissions`
+--
+ALTER TABLE `role_permissions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `role_permission_unique` (`role`,`permission`);
+
+--
 -- Index pour la table `system_logs`
 --
 ALTER TABLE `system_logs`
@@ -805,10 +967,16 @@ ALTER TABLE `pilotes`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT pour la table `role_permissions`
+--
+ALTER TABLE `role_permissions`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
 -- AUTO_INCREMENT pour la table `system_logs`
 --
 ALTER TABLE `system_logs`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=236;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=376;
 
 --
 -- AUTO_INCREMENT pour la table `utilisateurs`
@@ -832,7 +1000,7 @@ ALTER TABLE `candidatures`
 --
 ALTER TABLE `etudiants`
   ADD CONSTRAINT `etudiants_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `utilisateurs` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_etudiants_centre` FOREIGN KEY (`centre_id`) REFERENCES `centres` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `fk_etudiants_centre` FOREIGN KEY (`centre_id`) REFERENCES `centres` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 --
 -- Contraintes pour la table `evaluations_entreprises`

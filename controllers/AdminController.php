@@ -515,6 +515,10 @@ class AdminController {
      * Sauvegarde les permissions
      */
     public function savePermissions() {
+        // Protection contre les redirections cycliques
+        require_once ROOT_PATH . '/includes/RedirectGuard.php';
+        RedirectGuard::preventLoop('admin/permissions');
+
         // Sécurité - vérifier que c'est une requête POST
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             redirect(url('admin', 'permissions'));
@@ -524,63 +528,108 @@ class AdminController {
         require_once MODELS_PATH . '/Permission.php';
         $permissionModel = new Permission();
 
+        // Diagnostic technique avant traitement
+        $diagnosticData = $permissionModel->diagnoseTechnicalStatus();
+        error_log("Diagnostic pré-traitement: " . json_encode($diagnosticData));
+
+        // Vérifier si le modèle signale une erreur de connexion
+        if ($permissionModel->hasError()) {
+            $_SESSION['flash_message'] = [
+                'type' => 'danger',
+                'message' => "Erreur critique: Impossible d'accéder à la base de données des permissions. Vérifiez la configuration."
+            ];
+            // Redirection vers le tableau de bord principal au lieu de permissions
+            redirect(url('admin'));
+        }
+
         try {
             // Récupérer les rôles disponibles
             $roles = [ROLE_PILOTE, ROLE_ETUDIANT]; // Admin géré à part
 
-            // Commencer une transaction
-            $this->dbConnection->beginTransaction();
+            // Récupérer les paramètres POST pour chaque rôle
+            $successCount = 0;
+            $errorCount = 0;
+            $errorDetails = [];
 
             // Pour chaque rôle (sauf admin), réinitialiser et définir les nouvelles permissions
             foreach ($roles as $role) {
-                // Supprimer toutes les permissions actuelles du rôle
-                $query = "DELETE FROM role_permissions WHERE role = :role";
-                $stmt = $this->dbConnection->prepare($query);
-                $stmt->bindParam(':role', $role);
-                $stmt->execute();
+                // Supprimer toutes les permissions actuelles du rôle - avec gestion d'erreur détaillée
+                $removeResult = $permissionModel->removeAllPermissions($role);
+
+                if ($removeResult !== true) {
+                    $errorCount++;
+                    $errorDetails[] = "Erreur lors de la suppression des permissions pour {$role}: {$removeResult}";
+                    continue;
+                }
 
                 // Ajouter les nouvelles permissions
                 if (isset($_POST['permissions'][$role]) && is_array($_POST['permissions'][$role])) {
                     foreach ($_POST['permissions'][$role] as $permission) {
-                        $permissionModel->addPermission($role, $permission);
+                        $addResult = $permissionModel->addPermission($role, $permission);
+
+                        if ($addResult === true) {
+                            $successCount++;
+                        } else {
+                            $errorCount++;
+                            $errorDetails[] = "Erreur lors de l'ajout de {$permission} pour {$role}: {$addResult}";
+                        }
                     }
                 }
             }
 
-            // Valider la transaction
-            $this->dbConnection->commit();
+            // Diagnostic technique après traitement
+            $postDiagnostic = $permissionModel->diagnoseTechnicalStatus();
+            error_log("Diagnostic post-traitement: " . json_encode($postDiagnostic));
 
-            // Journaliser l'action
+            // Journaliser l'action avec des métriques détaillées
             $this->logManager->success(
                 "Modification des permissions",
                 $_SESSION['email'],
-                ['roles' => $roles]
+                [
+                    'roles' => $roles,
+                    'success_count' => $successCount,
+                    'error_count' => $errorCount
+                ]
             );
 
-            // Message de succès
-            $_SESSION['flash_message'] = [
-                'type' => 'success',
-                'message' => "Les permissions ont été mises à jour avec succès."
-            ];
+            // Message adapté selon le résultat
+            if ($errorCount == 0) {
+                $_SESSION['flash_message'] = [
+                    'type' => 'success',
+                    'message' => "Les permissions ont été mises à jour avec succès. {$successCount} permissions définies."
+                ];
+            } else {
+                $_SESSION['flash_message'] = [
+                    'type' => 'warning',
+                    'message' => "Les permissions ont été partiellement mises à jour. {$successCount} permissions définies, {$errorCount} erreurs."
+                ];
+
+                // Log détaillé des erreurs
+                error_log("Erreurs lors de la sauvegarde des permissions: " . json_encode($errorDetails));
+            }
         } catch (Exception $e) {
-            // Annuler la transaction en cas d'erreur
-            $this->dbConnection->rollBack();
+            // Log détaillé de l'exception
+            error_log("Exception critique dans savePermissions: " . $e->getMessage() . "\n" . $e->getTraceAsString());
 
-            // Journaliser l'erreur
+            // Journal d'activité
             $this->logManager->error(
-                "Échec de modification des permissions",
+                "Échec critique de modification des permissions",
                 $_SESSION['email'],
-                ['error' => $e->getMessage()]
+                [
+                    'error' => $e->getMessage(),
+                    'trace' => substr($e->getTraceAsString(), 0, 500)
+                ]
             );
 
-            // Message d'erreur
+            // Message d'erreur pour l'utilisateur
             $_SESSION['flash_message'] = [
                 'type' => 'danger',
-                'message' => "Une erreur est survenue lors de la mise à jour des permissions: " . $e->getMessage()
+                'message' => "Erreur technique lors de la mise à jour des permissions: " . $e->getMessage()
             ];
         }
 
-        // Redirection vers la page des permissions
+        // Redirection avec délai microscopique pour permettre la persistance du message flash
+        usleep(100000); // 100ms
         redirect(url('admin', 'permissions'));
     }
 
