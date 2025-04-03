@@ -269,3 +269,92 @@ footer {
         height: 180px !important;
     }
 }
+
+/* =======================================================
+   NOUVEAUX CORRECTIFS POUR LE PROBLÈME DE FOOTER
+   ======================================================= */
+
+/* Correctif principal pour les pages de détail */
+.detail-view {
+    /* Création d'un contexte de formatage de bloc (BFC) */
+    display: flow-root;
+    /* Augmentation de l'espacement pour éviter tout chevauchement */
+    margin-bottom: 250px !important;
+    padding-bottom: 80px !important;
+    /* Isolation du contexte de rendu et d'empilement */
+    contain: layout;
+    position: relative;
+    z-index: 1;
+}
+
+/* Spécifique aux pages de détails des offres et entreprises */
+body:has(.detail-view) footer {
+    /* Renforcement de la position du footer */
+    position: relative !important;
+    z-index: 999 !important;
+    /* Clear explicite pour éviter les problèmes de flottement */
+    clear: both !important;
+    display: block !important;
+    /* Marge importante pour éviter tout chevauchement */
+    margin-top: 150px !important;
+}
+
+/* Fixation de la colonne latérale droite */
+.detail-view .col-lg-4 {
+    /* Force un nouveau contexte de formatage */
+    isolation: isolate;
+    position: relative;
+    z-index: 2;
+}
+
+/* Correctif spécifique pour les offres similaires */
+.detail-view .offres-similaires-wrapper,
+.detail-view .col-lg-4 .card:last-child {
+    /* Force la marge du bas */
+    margin-bottom: 120px !important;
+    position: relative;
+    z-index: 2;
+}
+
+/* Correctif pour l'élément sentinelle de fin de page */
+#footer-sentinel {
+    display: block !important;
+    clear: both !important;
+    height: 180px !important;
+    width: 100% !important;
+    visibility: visible !important;
+    margin-bottom: 80px !important;
+}
+
+/* Ajustement pour les différentes tailles d'écran */
+@media (min-width: 992px) {
+    /* Écrans larges */
+    .detail-view {
+        margin-bottom: 300px !important;
+    }
+}
+
+@media (max-width: 991px) {
+    /* Tablettes et téléphones */
+    .detail-view {
+        margin-bottom: 350px !important;
+    }
+
+    #footer-sentinel {
+        height: 250px !important;
+    }
+}
+
+/* Hack spécifique pour Safari et autres navigateurs problématiques */
+@supports (-webkit-overflow-scrolling: touch) {
+    /* Force un contexte de pile distinct sur Safari */
+    .detail-view {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+
+    footer {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+}
