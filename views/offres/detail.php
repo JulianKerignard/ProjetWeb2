@@ -108,8 +108,8 @@ $isActive = $dateFin >= $now;
                                 <?php if (!empty($offre['competences'])): ?>
                                     <?php foreach ($offre['competences'] as $competence): ?>
                                         <span class="badge bg-primary me-1 mb-1 p-2">
-                                        <?php echo htmlspecialchars($competence['nom']); ?>
-                                    </span>
+                                    <?php echo htmlspecialchars($competence['nom']); ?>
+                                </span>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <p class="text-muted">Aucune compétence spécifiée.</p>
@@ -218,8 +218,8 @@ $isActive = $dateFin >= $now;
                     </div>
                 </div>
 
-                <!-- Offres similaires - avec la nouvelle classe CSS pour éviter les conflits de z-index -->
-                <div class="card shadow-sm mb-5 offres-similaires-container">
+                <!-- Offres similaires avec limitation des compétences -->
+                <div class="card shadow-sm offres-similaires-wrapper">
                     <div class="card-header bg-white">
                         <h5 class="mb-0"><i class="fas fa-th-list me-2"></i>Offres similaires</h5>
                     </div>
@@ -228,27 +228,54 @@ $isActive = $dateFin >= $now;
                             Pour voir d'autres offres similaires, vous pouvez filtrer par :
                         </p>
                         <div class="d-grid gap-2">
-                            <a href="<?php echo url('offres', 'rechercher', ['entreprise_id' => $offre['entreprise_id']]); ?>" class="btn btn-outline-secondary btn-sm">
+                            <a href="<?php echo url('offres', 'rechercher', ['entreprise_id' => $offre['entreprise_id']]); ?>" class="btn btn-outline-secondary btn-sm mb-2">
                                 <i class="fas fa-building me-1"></i>Même entreprise
                             </a>
-                            <?php if (!empty($offre['competences'])): ?>
-                                <?php foreach (array_slice($offre['competences'], 0, 3) as $competence): ?>
-                                    <a href="<?php echo url('offres', 'rechercher', ['competence_id' => $competence['id']]); ?>" class="btn btn-outline-secondary btn-sm">
-                                        <i class="fas fa-tag me-1"></i>Compétence : <?php echo htmlspecialchars($competence['nom']); ?>
-                                    </a>
-                                <?php endforeach; ?>
+
+                            <!-- Solution optimisée pour l'affichage des compétences -->
+                            <?php
+                            // Limite stricte du nombre de compétences affichées
+                            $maxCompetences = 1; // Seulement 1 compétence affichée directement
+                            $totalCompetences = count($offre['competences']);
+
+                            if (!empty($offre['competences']) && $totalCompetences > 0):
+                                // Afficher seulement la première compétence
+                                $competence = $offre['competences'][0];
+                                ?>
+                                <a href="<?php echo url('offres', 'rechercher', ['competence_id' => $competence['id']]); ?>"
+                                   class="btn btn-outline-secondary btn-sm mb-2">
+                                    <i class="fas fa-tag me-1"></i>Compétence : <?php echo htmlspecialchars($competence['nom']); ?>
+                                </a>
+
+                                <!-- Bouton regroupant toutes les autres compétences -->
+                                <?php if ($totalCompetences > $maxCompetences): ?>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-primary btn-sm w-100 dropdown-toggle" type="button" id="dropdownCompetences" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-tags me-1"></i>Voir <?php echo $totalCompetences - $maxCompetences; ?> autres compétences
+                                    </button>
+                                    <ul class="dropdown-menu w-100" aria-labelledby="dropdownCompetences">
+                                        <?php foreach (array_slice($offre['competences'], $maxCompetences) as $comp): ?>
+                                            <li>
+                                                <a class="dropdown-item" href="<?php echo url('offres', 'rechercher', ['competence_id' => $comp['id']]); ?>">
+                                                    <i class="fas fa-tag me-1"></i><?php echo htmlspecialchars($comp['nom']); ?>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
+
+                <!-- Élément sentinelle pour éviter le chevauchement avec le footer -->
+                <div id="footer-sentinel" class="mb-5 mt-4 w-100" style="height: 100px; display: block; clear: both;"></div>
             </div>
         </div>
 
-        <!-- Élément d'espacement pour éviter le chevauchement avec le footer -->
-        <div class="clearfix" style="margin-bottom: 80px;"></div>
-
-        <!-- Ajout d'un séparateur explicite pour éviter le chevauchement -->
-        <div class="footer-spacer"></div>
+        <!-- Séparateur explicite pour forcer l'espace avec le footer -->
+        <div class="clearfix" style="height: 180px; clear: both; display: block;"></div>
     </div>
 
 <?php include ROOT_PATH . '/views/templates/footer.php'; ?>

@@ -201,10 +201,45 @@ footer {
 
 /* Conteneur spécifique pour les offres similaires */
 .offres-similaires-container {
-    margin-bottom: 100px !important; /* Marge plus importante */
+    position: relative;
+    z-index: 5; /* Inférieur au footer mais supérieur au contenu standard */
+    margin-bottom: 150px !important; /* Espacement explicite et augmenté */
+    overflow: visible; /* Permettre au contenu de déborder si nécessaire */
+    contain: paint layout; /* Optimisation des performances de rendu */
+}
+
+/* Forcer l'espace correct pour les listes d'options sous le footer */
+.detail-view + div,
+.detail-view ~ div {
     position: relative;
     z-index: 1;
+}
+
+/* Conteneur de séparation explicite avant le footer */
+.footer-spacer {
+    height: 150px !important;
     clear: both;
+    display: block !important;
+    width: 100%;
+    visibility: visible !important;
+    min-height: 150px;
+}
+
+/* Correctif pour les derniers éléments avant le footer */
+.card:last-child,
+.row:last-child {
+    margin-bottom: 80px !important;
+}
+
+/* Appliquer containment pour optimiser le rendu */
+.detail-view .card {
+    contain: layout style;
+    overflow: visible;
+}
+
+.detail-view .row {
+    contain: layout style;
+    overflow: visible;
 }
 
 /* Styles responsifs pour les écrans plus petits */
@@ -223,32 +258,14 @@ footer {
 
     /* Espacement supplémentaire sur mobile */
     .detail-view {
-        margin-bottom: 150px !important;
+        margin-bottom: 180px !important;
     }
 
     main {
-        padding-bottom: 180px !important;
+        padding-bottom: 200px !important;
     }
-}
 
-/* Forcer l'espace correct pour les listes d'options sous le footer */
-.detail-view + div,
-.detail-view ~ div {
-    position: relative;
-    z-index: 1;
-}
-
-/* Conteneur de séparation explicite avant le footer */
-.footer-spacer {
-    height: 80px;
-    clear: both;
-    display: block;
-    width: 100%;
-    visibility: visible !important;
-}
-
-/* Correctif pour les derniers éléments avant le footer */
-.card:last-child,
-.row:last-child {
-    margin-bottom: 60px !important;
+    .footer-spacer {
+        height: 180px !important;
+    }
 }
