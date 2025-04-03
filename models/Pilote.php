@@ -258,6 +258,42 @@ class Pilote {
     }
 
     /**
+     * Récupère un pilote par son ID avec tous les détails associés
+     *
+     * @param int $id ID du pilote
+     * @return array|false Données du pilote ou false si non trouvé
+     */
+    public function getById($id) {
+        // Mode dégradé - retourne false
+        if ($this->dbError) {
+            return false;
+        }
+
+        try {
+            // Requête optimisée avec jointures pour récupérer les données du pilote, de l'utilisateur et du centre
+            $query = "SELECT p.*, u.email, u.role, c.nom as centre_nom, c.code as centre_code
+                 FROM {$this->table} p
+                 LEFT JOIN {$this->usersTable} u ON p.user_id = u.id
+                 LEFT JOIN centres c ON p.centre_id = c.id
+                 WHERE p.id = :id";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() == 0) {
+                return false;
+            }
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération du pilote: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Crée un nouveau pilote avec son compte utilisateur associé
      *
      * @param array $data Données du pilote
