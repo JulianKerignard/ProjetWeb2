@@ -556,6 +556,17 @@ class Etudiant {
             // Validation de la transaction
             $this->conn->commit();
 
+            // Vérification et initialisation des permissions pour le rôle étudiant
+            require_once ROOT_PATH . '/models/Permission.php';
+            $permissionModel = new Permission();
+
+            // Vérifier si les permissions nécessaires sont déjà définies pour les étudiants
+            if (!$permissionModel->hasPermission('etudiant', 'entreprise_evaluer')) {
+                // Si non, initialiser les permissions par défaut
+                $permissionModel->initDefaultPermissions();
+                error_log("Permissions réinitialisées lors de la création d'un étudiant (ID: $etudiantId)");
+            }
+
             return $etudiantId;
         } catch (PDOException $e) {
             // Annulation de la transaction en cas d'erreur
