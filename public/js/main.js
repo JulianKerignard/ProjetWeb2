@@ -55,9 +55,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var filterForm = document.getElementById('filter-form');
     var clearFilterBtn = document.getElementById('clear-filters');
 
-    if (clearFilterBtn) {
+    if (clearFilterBtn && filterForm) {
         clearFilterBtn.addEventListener('click', function() {
-            var inputs = filterForm.querySelectorAll('input, select');
+            // CORRECTION ICI: Ne pas effacer les champs cachés qui contiennent les paramètres de navigation
+            var inputs = filterForm.querySelectorAll('input:not([type="hidden"]), select');
 
             inputs.forEach(function(input) {
                 if (input.type === 'checkbox' || input.type === 'radio') {

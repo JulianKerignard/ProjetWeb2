@@ -145,9 +145,6 @@ footer .social-link:hover {
     padding: 2rem 0;
 }
 
-/* ========================================================
-   CORRECTIFS POUR CHEVAUCHEMENT CONTENUS ET FOOTER
-   ======================================================== */
 /* Structure du document */
 html, body {
     height: 100%;
@@ -270,10 +267,6 @@ footer {
     }
 }
 
-/* =======================================================
-   NOUVEAUX CORRECTIFS POUR LE PROBLÈME DE FOOTER
-   ======================================================= */
-
 /* Correctif principal pour les pages de détail */
 .detail-view {
     /* Création d'un contexte de formatage de bloc (BFC) */
@@ -359,9 +352,6 @@ body:has(.detail-view) footer {
     }
 }
 
-/* =======================================================
-   CORRECTIFS POUR LA PAGE DES STATISTIQUES
-   ======================================================= */
 
 /* Correctif spécifique pour la page des statistiques */
 body:has(.chart-canvas) {
@@ -524,9 +514,6 @@ body:has(.student-stats-container) footer {
     }
 }
 
-/* =======================================================
-   NOUVEAUX CORRECTIFS POUR LA SECTION DES ÉVALUATIONS
-   ======================================================= */
 
 /* Correction spécifique pour la section des évaluations */
 .detail-view .card:has(.list-group-item) {

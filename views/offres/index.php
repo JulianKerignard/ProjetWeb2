@@ -60,7 +60,7 @@ include ROOT_PATH . '/views/templates/header.php';
                             <label for="titre" class="form-label">Titre</label>
                             <input type="text" class="form-control" id="titre" name="titre"
                                    value="<?php echo isset($filters['titre']) ? htmlspecialchars($filters['titre']) : ''; ?>"
-                                   placeholder="Mots-clés...">
+                                   placeholder="Rechercher...">
                         </div>
 
                         <!-- Filtre par entreprise -->
@@ -269,7 +269,8 @@ include ROOT_PATH . '/views/templates/header.php';
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Gestionnaire pour effacer les filtres
+            // Gestionnaire pour effacer les filtres - ce script sera remplacé par le JS global
+            // Nous le laissons ici comme référence et pour rétrocompatibilité
             document.getElementById('clear-filters').addEventListener('click', function() {
                 // Réinitialiser tous les champs du formulaire
                 document.getElementById('titre').value = '';
