@@ -380,13 +380,13 @@ body:has(.chart-canvas) {
     contain: content !important;
     /* MODIFIÉ: Permettre le débordement pour les graphiques comme les camemberts */
     overflow: visible !important;
-    margin-bottom: 30px !important;
+    margin-bottom: 10px !important;
 }
 
 /* CORRECTIF: Correction des contextes d'empilement pour les Canvas de graphiques */
 .chart-canvas {
-    max-height: 350px !important; /* Augmenté pour donner plus d'espace */
-    height: 350px !important;
+    max-height: 300px !important; /* Augmenté pour donner plus d'espace */
+    height: 300px !important;
     position: relative !important;
     z-index: 5; /* Augmenté pour assurer la visibilité */
     /* MODIFIÉ: Permettre le débordement */
@@ -399,8 +399,8 @@ canvas[id*="placementChart"],
 canvas[id*="ratingsChart"] {
     overflow: visible !important;
     contain: none !important;
-    max-height: 400px !important;
-    height: 400px !important;
+    max-height: 300px !important;
+    height: 300px !important;
 }
 
 /* NOUVEAU: Conteneur spécifique pour les graphiques circulaires */
@@ -409,8 +409,8 @@ canvas[id*="ratingsChart"] {
 .chart-container:has(canvas[id*="ratingsChart"]) {
     overflow: visible !important;
     contain: none !important;
-    height: 400px !important;
-    max-height: 400px !important;
+    height: 300px !important;
+    max-height: 300px !important;
 }
 
 /* Correction du positionnement du footer sur la page de statistiques */
@@ -436,8 +436,8 @@ table.table {
 
 /* MODIFIÉ: Correction des marges sous les lignes de graphiques */
 .row:has(.chart-container) {
-    margin-bottom: 60px !important; /* Augmenté */
-    padding-bottom: 30px !important; /* Augmenté */
+    margin-bottom: 20px !important; /* Augmenté */
+    padding-bottom: 10px !important; /* Augmenté */
     overflow: visible !important;
 }
 
