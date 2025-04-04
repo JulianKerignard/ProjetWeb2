@@ -370,35 +370,62 @@ body:has(.chart-canvas) {
     min-height: 100vh;
 }
 
-/* Modifications pour les conteneurs de graphiques */
+/* CORRECTIF: Modifications pour les conteneurs de graphiques */
 .chart-container {
     position: relative;
-    height: 300px !important;
-    max-height: 300px !important;
+    height: 350px !important; /* Augmenté pour donner plus d'espace */
+    max-height: 350px !important;
     width: 100% !important;
-    contain: strict;
-    overflow: hidden !important;
-    margin-bottom: 20px !important;
+    /* MODIFIÉ: Suppression du containment strict pour permettre le débordement */
+    contain: content !important;
+    /* MODIFIÉ: Permettre le débordement pour les graphiques comme les camemberts */
+    overflow: visible !important;
+    margin-bottom: 30px !important;
 }
 
-/* Correction des contextes d'empilement pour les Canvas de graphiques */
+/* CORRECTIF: Correction des contextes d'empilement pour les Canvas de graphiques */
 .chart-canvas {
-    max-height: 300px !important;
-    height: 300px !important;
+    max-height: 350px !important; /* Augmenté pour donner plus d'espace */
+    height: 350px !important;
     position: relative !important;
-    z-index: 1;
-    contain: strict;
+    z-index: 5; /* Augmenté pour assurer la visibilité */
+    /* MODIFIÉ: Permettre le débordement */
+    contain: none !important;
+}
+
+/* NOUVEAU: Styles spécifiques pour les graphiques circulaires */
+canvas[id*="durationChart"],
+canvas[id*="placementChart"],
+canvas[id*="ratingsChart"] {
+    overflow: visible !important;
+    contain: none !important;
+    max-height: 400px !important;
+    height: 400px !important;
+}
+
+/* NOUVEAU: Conteneur spécifique pour les graphiques circulaires */
+.chart-container:has(canvas[id*="durationChart"]),
+.chart-container:has(canvas[id*="placementChart"]),
+.chart-container:has(canvas[id*="ratingsChart"]) {
+    overflow: visible !important;
+    contain: none !important;
+    height: 400px !important;
+    max-height: 400px !important;
 }
 
 /* Correction du positionnement du footer sur la page de statistiques */
 body:has(.chart-canvas) main {
     padding-bottom: 250px !important;
-    overflow: auto;
+    overflow: visible !important; /* MODIFIÉ: permettre le débordement */
 }
 
-/* Empêcher les débordements dans la page des statistiques */
-.card.shadow-sm {
-    overflow: hidden !important;
+/* NOUVEAU: Correction des cartes contenant des graphiques circulaires */
+.card:has(canvas[id*="durationChart"]),
+.card:has(canvas[id*="placementChart"]),
+.card:has(canvas[id*="ratingsChart"]) {
+    overflow: visible !important;
+    contain: none !important;
+    max-height: none !important;
 }
 
 /* Correction pour le tableau de statistiques */
@@ -407,10 +434,11 @@ table.table {
     table-layout: fixed;
 }
 
-/* Correction des marges sous les lignes de graphiques */
+/* MODIFIÉ: Correction des marges sous les lignes de graphiques */
 .row:has(.chart-container) {
-    margin-bottom: 40px !important;
-    padding-bottom: 20px !important;
+    margin-bottom: 60px !important; /* Augmenté */
+    padding-bottom: 30px !important; /* Augmenté */
+    overflow: visible !important;
 }
 
 /* Assurer que les éléments de la page de statistiques ne débordent pas */
@@ -424,30 +452,25 @@ table.table {
     margin-bottom: 40px;
 }
 
-/* Contraintes dimensionnelles pour les conteneurs de graphiques */
-.chart-container {
-    position: relative;
-    height: 300px !important;
-    max-height: 300px !important;
-    width: 100% !important;
-    overflow: hidden !important;
-    contain: size layout !important;
-    margin-bottom: 20px !important;
+/* NOUVEAU: Styles spécifiques pour la division des graphiques */
+.col-md-6:has(.chart-container) {
+    overflow: visible !important;
+    padding-bottom: 20px !important;
 }
 
-/* Dimensions explicites pour les éléments canvas */
-canvas.chart-canvas {
-    max-height: 300px !important;
-    height: 300px !important;
-    width: 100% !important;
-    display: block !important;
+/* NOUVEAU: Correction pour les cartes contenant des données statistiques */
+.card.shadow-sm:has(.chart-container) {
+    overflow: visible !important;
+    margin-bottom: 50px !important;
 }
 
-/* Style pour les cartes contenant des graphiques */
-.card:has(.chart-container) {
-    overflow: hidden !important;
-    contain: content !important;
-    max-height: 450px !important;
+/* NOUVEAU: Force l'espace pour les légendes sous les graphiques circulaires */
+canvas[id*="durationChart"] + .chartjs-legend,
+canvas[id*="placementChart"] + .chartjs-legend,
+canvas[id*="ratingsChart"] + .chartjs-legend {
+    margin-top: 20px !important;
+    position: relative !important;
+    z-index: 6 !important;
 }
 
 /* Conteneur pour les statistiques d'étudiant */
@@ -475,10 +498,25 @@ body:has(.student-stats-container) footer {
     margin-top: 100px !important;
 }
 
+/* NOUVEAU: Correctif global pour les graphiques */
+.card-body:has(.chart-container) {
+    overflow: visible !important;
+    padding-bottom: 30px !important;
+}
+
 /* Ajustements responsifs */
 @media (max-width: 768px) {
+    /* MODIFIÉ: Adaptation pour mobile */
     .chart-container {
-        height: 250px !important;
+        height: 300px !important;
+    }
+
+    /* NOUVEAU: Ajustement pour les graphiques circulaires sur mobile */
+    .chart-container:has(canvas[id*="durationChart"]),
+    .chart-container:has(canvas[id*="placementChart"]),
+    .chart-container:has(canvas[id*="ratingsChart"]) {
+        height: 350px !important;
+        max-height: 350px !important;
     }
 
     .stats-footer-spacer {
