@@ -7,26 +7,34 @@
  */
 include ROOT_PATH . '/views/templates/header.php';
 ?>
-    <!-- Styles spécifiques pour contraindre les dimensions des graphiques -->
+    <!-- Styles spécifiques pour contraindre les dimensions des graphiques avec corrections -->
     <style>
         /* Contraintes dimensionnelles pour tous les graphiques */
         canvas.chart-canvas {
             max-height: 300px !important;
             height: 300px !important;
             width: 100% !important;
+            display: block !important;
         }
 
-        /* Empêcher le débordement des conteneurs */
+        /* Empêcher le débordement des conteneurs - SAUF pour les graphiques circulaires */
         .chart-container {
             position: relative;
             height: 300px;
             width: 100%;
-            overflow: hidden;
+            margin-bottom: 20px;
+            /* Suppression de overflow: hidden pour permettre l'affichage complet des graphiques circulaires */
+        }
+
+        /* Exception spécifique pour les graphiques circulaires */
+        .chart-container:has(canvas[id$="Chart"]) {
+            overflow: visible !important;
+            contain: none !important;
         }
 
         /* Assurer que les cartes contenant les stats ne débordent pas */
         .card-body {
-            overflow: hidden;
+            overflow: visible; /* Modifié de hidden à visible */
         }
 
         /* Style optimisé pour les indicateurs statistiques */
@@ -41,6 +49,21 @@ include ROOT_PATH . '/views/templates/header.php';
         /* Éviter les marges excessives qui pourraient contribuer à l'étirement */
         .row {
             margin-bottom: 20px;
+        }
+
+        /* Ajout d'espace en bas des conteneurs de graphiques circulaires */
+        .chart-container:has(canvas[id="durationChart"]),
+        .chart-container:has(canvas[id="ratingsChart"]),
+        .chart-container:has(canvas[id="placementChart"]) {
+            margin-bottom: 40px !important;
+            padding-bottom: 20px !important;
+            overflow: visible !important;
+            contain: none !important;
+        }
+
+        /* Espace additionnel pour le conteneur parent */
+        .col-md-6:has(.chart-container) {
+            margin-bottom: 30px;
         }
     </style>
 
@@ -255,9 +278,8 @@ include ROOT_PATH . '/views/templates/header.php';
         document.addEventListener('DOMContentLoaded', function() {
             // Définition des options communes pour contraindre la taille des graphiques
             const commonOptions = {
-                maintainAspectRatio: true, // Modification essentielle pour éviter l'étirement
+                maintainAspectRatio: true,
                 responsive: true,
-                height: 300,
                 animation: {
                     duration: 500, // Réduction de la durée d'animation pour éviter les problèmes de performance
                 },
@@ -281,6 +303,28 @@ include ROOT_PATH . '/views/templates/header.php';
                         right: 10,
                         bottom: 5,
                         left: 10
+                    }
+                }
+            };
+
+            // Options spécifiques pour les graphiques circulaires
+            const pieChartOptions = {
+                ...commonOptions,
+                maintainAspectRatio: true,
+                responsive: true,
+                plugins: {
+                    ...commonOptions.plugins,
+                    legend: {
+                        ...commonOptions.plugins.legend,
+                        position: 'right', // Positionner la légende à droite pour laisser plus d'espace au graphique
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 20,
+                        right: 20,
+                        bottom: 20,
+                        left: 20
                     }
                 }
             };
@@ -351,6 +395,7 @@ include ROOT_PATH . '/views/templates/header.php';
             });
 
             // Graphique des durées - Utilisation d'un graphique à secteurs avec dimensions contrôlées
+            // Configuration améliorée pour le graphique circulaire
             const durationCtx = document.getElementById('durationChart').getContext('2d');
             new Chart(durationCtx, {
                 type: 'pie',
@@ -363,9 +408,9 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
-                    ...commonOptions,
+                    ...pieChartOptions, // Utiliser les options spécifiques aux graphiques circulaires
                     plugins: {
-                        ...commonOptions.plugins,
+                        ...pieChartOptions.plugins,
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -517,10 +562,10 @@ include ROOT_PATH . '/views/templates/header.php';
                     }]
                 },
                 options: {
-                    ...commonOptions,
+                    ...pieChartOptions, // Utiliser les options optimisées pour graphiques circulaires
                     cutout: '60%',
                     plugins: {
-                        ...commonOptions.plugins,
+                        ...pieChartOptions.plugins,
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
